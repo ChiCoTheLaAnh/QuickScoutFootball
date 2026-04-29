@@ -9,15 +9,22 @@ export function recommendPlayers(
   players: Player[],
   request: RecommendationRequest,
 ): Recommendation[] {
-  const limit = request.limit ?? players.length;
-
   return players
     .map((player) => ({
       player,
       score: scorePlayer(player, request),
       reasons: ['not_implemented'],
       confidence: 0,
+      candidateType: request.mode,
+      breakdown: {
+        similarity: 0,
+        roleFit: 0,
+        output: 0,
+        affordability: 0,
+        ageUpside: 0,
+        total: 0,
+      },
     }))
     .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+    .slice(0, players.length);
 }

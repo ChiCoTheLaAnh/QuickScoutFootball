@@ -1,4 +1,4 @@
-import type { Player, RecommendationRequest } from './types';
+import type { Player, RecommendationRequest, RecommendationScoreBreakdown } from './types';
 
 const EPSILON = 1e-9;
 
@@ -39,14 +39,7 @@ const ROLE_TARGET_RANGES: Record<string, Record<string, [number, number]>> = {
   goalkeeper: { passAccuracyPct: [45, 95], minutes: [0, 3500] },
 };
 
-export interface ScoreBreakdown {
-  similarity: number;
-  roleFit: number;
-  output: number;
-  affordability: number;
-  ageUpside: number;
-  total: number;
-}
+export type ScoreBreakdown = RecommendationScoreBreakdown;
 
 export function normalizeValue(value: number, min: number, max: number): number {
   if (!Number.isFinite(value) || !Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
@@ -128,8 +121,26 @@ function calculateOutputScore(candidate: Player, role: string): number {
   return avg * 100;
 }
 
+function normalizeRole(role: string): string {
+  const normalized = role.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  const roleAliases: Record<string, string> = {
+    gk: 'goalkeeper',
+    cb: 'centre_back',
+    rb: 'fullback',
+    lb: 'fullback',
+    dm: 'defensive_midfielder',
+    cm: 'central_midfielder',
+    am: 'attacking_midfielder',
+    rw: 'winger',
+    lw: 'winger',
+    st: 'striker',
+  };
+
+  return roleAliases[normalized] ?? normalized;
+}
+
 function inferRole(request: RecommendationRequest, candidate: Player): string {
-  return request.targetPosition ?? candidate.position?.toLowerCase().replace(/\s+/g, '_') ?? 'central_midfielder';
+  return normalizeRole(request.role || candidate.position || 'central_midfielder');
 }
 
 export function calculateReplacementScore(
@@ -141,7 +152,7 @@ export function calculateReplacementScore(
   const similarity = calculateSimilarityScore(target, candidate, role);
   const roleFit = calculateOutputScore(candidate, role);
   const output = calculateOutputScore(candidate, role);
-  const affordability = calculateAffordabilityScore(candidate, request.maxMarketValueEur);
+  const affordability = calculateAffordabilityScore(candidate, request.maxMarketValueEur ?? undefined);
   const ageUpside = calculateAgeUpsideScore(candidate);
 
   const total =
@@ -187,7 +198,7 @@ export function scorePlayer(player: Player, request: RecommendationRequest): num
     id: 'baseline',
     provider: 'derived',
     fullName: 'Target Profile',
-    position: request.targetPosition,
+    position: request.role,
     stats: {},
   };
 

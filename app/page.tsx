@@ -2,7 +2,7 @@
 
 import { FormEvent, useMemo, useState } from 'react';
 
-type Mode = 'like-for-like' | 'cheaper alternative' | 'young upside';
+import type { Recommendation, RecommendationMode, RecommendationRequest, RecommendationResponse } from '@/src/lib/types';
 
 type ResultRow = {
   rank?: number;
@@ -13,7 +13,7 @@ type ResultRow = {
   position?: string;
   marketValueEur?: number;
   score?: number;
-  candidateType?: string;
+  candidateType?: RecommendationMode;
   explanation?: string;
   breakdown?: {
     similarity?: number;
@@ -30,7 +30,7 @@ export default function HomePage() {
   const [maxAge, setMaxAge] = useState('30');
   const [maxMarketValueEur, setMaxMarketValueEur] = useState('60000000');
   const [minMinutes, setMinMinutes] = useState('900');
-  const [mode, setMode] = useState<Mode>('like-for-like');
+  const [mode, setMode] = useState<RecommendationMode>('like_for_like');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,9 +43,26 @@ export default function HomePage() {
     [],
   );
 
-  const parseNumber = (value: string) => {
+  const parseNullableNumber = (value: string): number | null => {
+    if (value.trim() === '') return null;
     const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : undefined;
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const mapRecommendation = (recommendation: Recommendation, index: number): ResultRow => {
+    const { player } = recommendation;
+    return {
+      rank: index + 1,
+      playerName: player.fullName,
+      age: player.age,
+      club: player.team,
+      position: player.position,
+      marketValueEur: player.marketValueEur,
+      score: recommendation.score,
+      candidateType: recommendation.candidateType,
+      explanation: recommendation.reasons.join(' · '),
+      breakdown: recommendation.breakdown,
+    };
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -55,59 +72,42 @@ export default function HomePage() {
     setResults([]);
 
     try {
+      const requestBody: RecommendationRequest = {
+        targetPlayerName,
+        role,
+        maxAge: parseNullableNumber(maxAge),
+        maxMarketValueEur: parseNullableNumber(maxMarketValueEur),
+        minMinutes: parseNullableNumber(minMinutes),
+        mode,
+      };
+
       const response = await fetch('/api/recommend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          targetPlayerName,
-          role,
-          maxAge: parseNumber(maxAge),
-          maxMarketValueEur: parseNumber(maxMarketValueEur),
-          minMinutes: parseNumber(minMinutes),
-          mode,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
-        throw new Error(`Request failed (${response.status})`);
+        const payload = await response.json().catch(() => null) as { error?: string } | null;
+        if (response.status === 404) {
+          throw new Error(payload?.error ?? 'Target player not found.');
+        }
+        throw new Error(payload?.error ?? `API error (${response.status})`);
       }
 
-      const payload = await response.json();
-      const incoming = Array.isArray(payload) ? payload : payload.results;
-      if (!Array.isArray(incoming)) {
+      const payload = await response.json() as RecommendationResponse;
+      if (!payload.target || !Array.isArray(payload.recommendations)) {
         throw new Error('Unexpected response format from /api/recommend');
       }
 
-      const mapped = incoming.map((item: any, index: number): ResultRow => ({
-        rank: item.rank ?? index + 1,
-        playerName:
-          item.playerName ??
-          item.player?.fullName ??
-          item.player?.name ??
-          item.name ??
-          'Unknown',
-        age: item.age ?? item.player?.age,
-        club: item.club ?? item.player?.team ?? item.player?.club,
-        league: item.league ?? item.player?.league,
-        position: item.position ?? item.player?.position,
-        marketValueEur: item.marketValueEur ?? item.player?.marketValueEur,
-        score: item.score,
-        candidateType: item.candidateType ?? item.type ?? mode,
-        explanation:
-          item.explanation ??
-          (Array.isArray(item.reasons) ? item.reasons.join(' · ') : undefined),
-        breakdown: {
-          similarity: item.breakdown?.similarity,
-          roleFit: item.breakdown?.roleFit,
-          output: item.breakdown?.output,
-          affordability: item.breakdown?.affordability,
-          ageUpside: item.breakdown?.ageUpside,
-        },
-      }));
+      if (payload.recommendations.length === 0) {
+        setError('No recommendations found for the selected filters.');
+        return;
+      }
 
-      setResults(mapped);
+      setResults(payload.recommendations.map(mapRecommendation));
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'Request failed');
+      setError(submitError instanceof Error ? submitError.message : 'API error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -151,12 +151,12 @@ export default function HomePage() {
             Mode
             <select
               value={mode}
-              onChange={(e) => setMode(e.target.value as Mode)}
+              onChange={(e) => setMode(e.target.value as RecommendationMode)}
               className="rounded-lg border border-slate-300 px-3 py-2 outline-none ring-indigo-200 focus:ring"
             >
-              <option value="like-for-like">Like-for-like</option>
-              <option value="cheaper alternative">Cheaper alternative</option>
-              <option value="young upside">Young upside</option>
+              <option value="like_for_like">Like-for-like</option>
+              <option value="cheaper">Cheaper alternative</option>
+              <option value="young_upside">Young upside</option>
             </select>
           </label>
 

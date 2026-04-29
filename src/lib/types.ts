@@ -30,17 +30,34 @@ export interface Recommendation {
   score: number;
   reasons: string[];
   confidence: number;
+  candidateType: RecommendationMode;
+  breakdown: RecommendationScoreBreakdown;
   metadata?: Record<string, string | number | boolean | null>;
 }
 
+export type RecommendationMode = 'like_for_like' | 'cheaper' | 'young_upside';
+
+export interface RecommendationScoreBreakdown {
+  similarity: number;
+  roleFit: number;
+  output: number;
+  affordability: number;
+  ageUpside: number;
+  total: number;
+}
+
 export interface RecommendationRequest {
-  targetPosition?: string;
-  maxAge?: number;
-  maxMarketValueEur?: number;
-  minMinutes?: number;
-  teamStyle?: string;
-  limit?: number;
-  providers?: string[];
+  targetPlayerName: string;
+  role: string;
+  maxAge: number | null;
+  maxMarketValueEur: number | null;
+  minMinutes: number | null;
+  mode: RecommendationMode;
+}
+
+export interface RecommendationResponse {
+  target: Player;
+  recommendations: Recommendation[];
 }
 
 export interface ProviderPlayerRaw {
