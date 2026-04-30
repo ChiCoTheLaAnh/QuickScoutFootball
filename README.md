@@ -33,6 +33,63 @@ The goal is to provide a fast, explainable recommendation pipeline for scouting:
 
 4. (Optional) Apply Supabase schema from `supabase/schema.sql` to your local or hosted project.
 
+## Running with seed fallback
+
+Supabase is optional for local MVP development. Leave these values empty or unset in `.env.local`:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+Then run:
+
+```bash
+npm install
+npm run dev
+```
+
+The app will read from `src/data/seedPlayers.ts`.
+
+## Running with Supabase
+
+Set the required Supabase values in `.env.local`:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` is optional for this MVP. Server reads use it when present and fall back to the anon key otherwise.
+
+Apply the schema using the Supabase SQL editor by running the contents of:
+
+```bash
+supabase/schema.sql
+```
+
+Or, with a linked Supabase CLI project:
+
+```bash
+supabase db push
+```
+
+Apply seed data using the SQL editor by running the contents of:
+
+```bash
+supabase/seed.sql
+```
+
+Then start the app:
+
+```bash
+npm run dev
+```
+
+Provider ingestion, authentication, and cron refresh logic are intentionally not implemented yet.
+
 ## API routes
 
 Current/expected MVP route surface:

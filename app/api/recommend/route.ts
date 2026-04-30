@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
-import { getSeedPlayerByName, seedPlayers } from '@/src/data/seedPlayers';
 import { calculateReplacementScore, explainRecommendation } from '@/src/lib/scoring';
+import { getPlayers } from '@/src/lib/supabase/players';
 import type { Recommendation, RecommendationMode, RecommendationRequest, RecommendationResponse } from '@/src/lib/types';
 
 const recommendationModes: RecommendationMode[] = ['like_for_like', 'cheaper', 'young_upside'];
@@ -27,10 +27,6 @@ function isValidRecommendationRequest(value: unknown): value is RecommendationRe
   );
 }
 
-function resolveTarget(request: RecommendationRequest) {
-  return getSeedPlayerByName(request.targetPlayerName);
-}
-
 export async function POST(req: Request) {
   const json = await req.json().catch(() => null);
 
@@ -41,7 +37,12 @@ export async function POST(req: Request) {
     );
   }
 
-  const target = resolveTarget(json);
+  const players = await getPlayers();
+  const normalizedTargetName = json.targetPlayerName.trim().toLowerCase().replace(/\s+/g, ' ');
+  const target = players.find(
+    (player) => player.fullName.trim().toLowerCase().replace(/\s+/g, ' ') === normalizedTargetName,
+  );
+
   if (!target) {
     return NextResponse.json(
       { error: 'Target player not found in seed data.' },
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const filteredCandidates = seedPlayers.filter((candidate) => {
+  const filteredCandidates = players.filter((candidate) => {
     if (candidate.id === target.id) return false;
     if (json.maxAge !== null && (candidate.age ?? Number.POSITIVE_INFINITY) > json.maxAge) return false;
     if (json.maxMarketValueEur !== null && (candidate.marketValueEur ?? Number.POSITIVE_INFINITY) > json.maxMarketValueEur) return false;

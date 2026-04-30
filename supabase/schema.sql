@@ -12,6 +12,7 @@ create table if not exists public.players (
   first_name text,
   last_name text,
   birth_date date,
+  age integer,
   nationality text,
   primary_position text,
   secondary_positions text[] default '{}',
@@ -30,8 +31,11 @@ create table if not exists public.players (
 );
 
 create index if not exists idx_players_normalized_name on public.players (normalized_name);
+create index if not exists idx_players_primary_position on public.players (primary_position);
+create index if not exists idx_players_league_name on public.players (league_name);
 create index if not exists idx_players_team on public.players (team_provider_id);
 create index if not exists idx_players_market_value on public.players (market_value_eur desc nulls last);
+create index if not exists idx_players_age on public.players (age);
 create index if not exists idx_players_updated_at on public.players (updated_at desc);
 
 create table if not exists public.player_season_stats (

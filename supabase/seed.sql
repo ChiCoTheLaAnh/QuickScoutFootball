@@ -1,0 +1,82 @@
+-- QuickScout Football MVP seed data
+
+insert into public.players (
+  id,
+  provider_player_id,
+  provider_source,
+  slug,
+  full_name,
+  normalized_name,
+  age,
+  nationality,
+  primary_position,
+  team_name,
+  league_name,
+  market_value_eur
+) values
+  ('00000000-0000-4000-8000-000000000001', 'seed-mohamed-salah', 'seed', 'mohamed-salah', 'Mohamed Salah', 'mohamed salah', 33, 'Egypt', 'RW', 'Liverpool', 'Premier League', 55000000),
+  ('00000000-0000-4000-8000-000000000002', 'seed-bukayo-saka', 'seed', 'bukayo-saka', 'Bukayo Saka', 'bukayo saka', 24, 'England', 'RW', 'Arsenal', 'Premier League', 130000000),
+  ('00000000-0000-4000-8000-000000000003', 'seed-rodrygo', 'seed', 'rodrygo', 'Rodrygo', 'rodrygo', 25, 'Brazil', 'RW', 'Real Madrid', 'La Liga', 100000000),
+  ('00000000-0000-4000-8000-000000000004', 'seed-khvicha-kvaratskhelia', 'seed', 'khvicha-kvaratskhelia', 'Khvicha Kvaratskhelia', 'khvicha kvaratskhelia', 25, 'Georgia', 'LW', 'Napoli', 'Serie A', 90000000),
+  ('00000000-0000-4000-8000-000000000005', 'seed-rafael-leao', 'seed', 'rafael-leao', 'Rafael Leao', 'rafael leao', 27, 'Portugal', 'LW', 'AC Milan', 'Serie A', 85000000),
+  ('00000000-0000-4000-8000-000000000006', 'seed-leroy-sane', 'seed', 'leroy-sane', 'Leroy Sane', 'leroy sane', 30, 'Germany', 'RW', 'Bayern Munich', 'Bundesliga', 70000000),
+  ('00000000-0000-4000-8000-000000000007', 'seed-nico-williams', 'seed', 'nico-williams', 'Nico Williams', 'nico williams', 23, 'Spain', 'LW', 'Athletic Club', 'La Liga', 70000000),
+  ('00000000-0000-4000-8000-000000000008', 'seed-michael-olise', 'seed', 'michael-olise', 'Michael Olise', 'michael olise', 25, 'France', 'RW', 'Bayern Munich', 'Bundesliga', 75000000),
+  ('00000000-0000-4000-8000-000000000009', 'seed-jamal-musiala', 'seed', 'jamal-musiala', 'Jamal Musiala', 'jamal musiala', 23, 'Germany', 'AM', 'Bayern Munich', 'Bundesliga', 130000000),
+  ('00000000-0000-4000-8000-000000000010', 'seed-florian-wirtz', 'seed', 'florian-wirtz', 'Florian Wirtz', 'florian wirtz', 23, 'Germany', 'AM', 'Bayer Leverkusen', 'Bundesliga', 140000000)
+on conflict (provider_source, provider_player_id) do update set
+  slug = excluded.slug,
+  full_name = excluded.full_name,
+  normalized_name = excluded.normalized_name,
+  age = excluded.age,
+  nationality = excluded.nationality,
+  primary_position = excluded.primary_position,
+  team_name = excluded.team_name,
+  league_name = excluded.league_name,
+  market_value_eur = excluded.market_value_eur,
+  updated_at = now();
+
+insert into public.player_season_stats (
+  player_id,
+  provider_stat_id,
+  provider_source,
+  season,
+  competition,
+  competition_provider_id,
+  appearances,
+  minutes,
+  goals,
+  assists,
+  expected_goals,
+  expected_assists,
+  shots,
+  key_passes,
+  pass_accuracy,
+  tackles,
+  interceptions
+) values
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-mohamed-salah'), 'seed-mohamed-salah-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 36, 2920, 22, 12, 20.1, 9.8, 133, 71, 82, 28, 16),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-bukayo-saka'), 'seed-bukayo-saka-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 34, 2790, 17, 11, 14.9, 10.7, 105, 67, 84, 31, 19),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-rodrygo'), 'seed-rodrygo-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 35, 2610, 14, 9, 12.6, 7.1, 96, 52, 87, 23, 14),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-khvicha-kvaratskhelia'), 'seed-khvicha-kvaratskhelia-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 33, 2745, 13, 10, 13.8, 9.5, 118, 69, 83, 27, 15),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-rafael-leao'), 'seed-rafael-leao-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 31, 2520, 11, 9, 11.4, 7.9, 101, 54, 81, 20, 12),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-leroy-sane'), 'seed-leroy-sane-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 30, 2380, 10, 13, 9.4, 10.2, 86, 64, 85, 24, 13),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-nico-williams'), 'seed-nico-williams-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 32, 2460, 8, 14, 7.2, 11.0, 79, 73, 82, 30, 17),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-michael-olise'), 'seed-michael-olise-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 29, 2270, 9, 12, 8.1, 10.8, 74, 70, 84, 22, 11),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-jamal-musiala'), 'seed-jamal-musiala-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 31, 2485, 12, 8, 10.8, 6.3, 93, 48, 88, 26, 15),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-florian-wirtz'), 'seed-florian-wirtz-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 33, 2670, 11, 15, 9.7, 12.5, 89, 86, 89, 29, 18)
+on conflict (player_id, provider_source, season, competition_provider_id) do update set
+  provider_stat_id = excluded.provider_stat_id,
+  competition = excluded.competition,
+  appearances = excluded.appearances,
+  minutes = excluded.minutes,
+  goals = excluded.goals,
+  assists = excluded.assists,
+  expected_goals = excluded.expected_goals,
+  expected_assists = excluded.expected_assists,
+  shots = excluded.shots,
+  key_passes = excluded.key_passes,
+  pass_accuracy = excluded.pass_accuracy,
+  tackles = excluded.tackles,
+  interceptions = excluded.interceptions,
+  updated_at = now();

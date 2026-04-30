@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { searchSeedPlayers } from '@/src/data/seedPlayers';
+import { searchPlayers } from '@/src/lib/supabase/players';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ results: [] });
   }
 
-  const results = searchSeedPlayers(q).map((player) => ({
+  const results = (await searchPlayers(q)).map((player) => ({
     id: player.id,
     fullName: player.fullName,
     team: player.team,
