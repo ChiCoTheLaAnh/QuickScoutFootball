@@ -23,7 +23,7 @@ QuickScout Football is an MVP scouting intelligence app. It helps identify footb
 
 **What is broken / missing:**
 
-- Minimal unit tests for core scoring helpers (`npm test`); no API/E2E coverage yet
+- Unit tests for scoring helpers and recommendation request validation (`npm test`); no route integration or E2E coverage yet
 - Provider ingestion not implemented (stubs return empty / `not_implemented`)
 - Cron refresh (`GET /api/cron/refresh`) returns `not_implemented` — scheduled in Vercel but inactive until Phase 4
 - Authentication not implemented
