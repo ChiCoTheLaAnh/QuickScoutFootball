@@ -1,58 +1,96 @@
 # Agent Instructions
 
-## Project goal
+## Before Starting
 
-QuickScout Football is an MVP scouting intelligence app. It helps identify football players worth tracking by combining seeded (or Supabase-backed) player profiles, season stats, and an explainable recommendation pipeline. Users pick a target player and filters; the app scores candidates (like-for-like, cheaper alternative, young upside) and persists recommendation run history for repeatability.
+Always read:
 
-## Tech stack
+1. [PROJECT_STATUS.md](PROJECT_STATUS.md)
+2. [ROADMAP.md](ROADMAP.md)
+3. [README.md](README.md)
 
-- **Framework:** Next.js 16 (App Router)
-- **Language:** TypeScript, React 19
-- **Database:** Supabase (PostgreSQL) — optional; falls back to `src/data/seedPlayers.ts` and in-memory recommendation runs when env vars are unset
-- **Deployment:** Vercel (`vercel.json` cron stub for `/api/cron/refresh`)
+---
 
-## Current state
+## Project Summary
 
-**What already works:**
+QuickScout Football is an MVP scouting intelligence app. Users select a target player and filters; the app returns ranked replacement candidates with explainable scores. Data comes from seed files or Supabase; provider sync is staged for later phases.
 
-- Home UI: player search autocomplete, recommendation form, results table with score breakdown
-- API routes: players list/search/detail, `POST /api/recommend`, recommendation runs list/detail, latest recommendations
-- Scoring and normalization in `src/lib/scoring.ts` and `src/lib/normalize.ts`
-- Seed-data-first dev without Supabase; Supabase schema/seed in `supabase/schema.sql` and `supabase/seed.sql`
-- Provider module stubs (`apiFootball`, `footio`) ready for Phase 2+ integration
+**Stack:** Next.js 16, TypeScript, React 19, Tailwind, Supabase (optional), Vercel.
 
-**What is broken / missing:**
+---
 
-- Unit tests for scoring helpers and recommendation request validation (`npm test`); no route integration or E2E coverage yet
-- Provider ingestion not implemented (stubs return empty / `not_implemented`)
-- Cron refresh (`GET /api/cron/refresh`) returns `not_implemented` — scheduled in Vercel but inactive until Phase 4
-- Authentication not implemented
-- Multi-provider sync, conflict resolution, and production monitoring not built
+## Your Responsibilities
 
-## How to run
+When working on the repository:
 
-```bash
-npm install
-cp .env.example .env.local   # optional; leave Supabase vars empty for seed-only mode
-npm run dev
-```
+1. Understand the current phase ([PROJECT_STATUS.md](PROJECT_STATUS.md))
+2. Prioritize [ROADMAP.md](ROADMAP.md) tasks correctly
+3. Avoid future-phase work (auth, provider ingestion, cron jobs) unless explicitly requested
+4. Preserve existing architecture and API contracts
+5. Prefer minimal safe changes
+6. Explain reasoning before major edits
 
-Open [http://localhost:3000](http://localhost:3000).
+---
 
-**With Supabase:** set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and optionally `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`, then apply `supabase/schema.sql` and `supabase/seed.sql`.
+## Coding Rules
 
-**Verify before finishing work:**
+- Do not modify unrelated files
+- Keep functions small
+- Reuse existing patterns (`src/lib/`, `app/api/`, seed-first data access)
+- Avoid unnecessary dependencies
+- Prefer readability over cleverness
+- Do not change API response shapes when adding ingestion or persistence
 
-```bash
-npm run lint
-npm run build
-npm test
-```
+---
 
-## Rules for the agent
+## Workflow
 
-- Do not rewrite unrelated files.
-- Prefer small commits.
-- Always explain changed files.
-- Run `npm run lint`, `npm run build`, and `npm test` before final answer.
-- If unsure, inspect files before editing.
+### Before coding
+
+1. Analyze relevant files
+2. Explain the planned approach
+3. Identify risks
+
+### After coding
+
+1. Run verification (when possible):
+
+   ```bash
+   npm run lint
+   npm run build
+   npm test
+   ```
+
+2. Summarize changed files
+3. Suggest the next logical step from [ROADMAP.md](ROADMAP.md)
+
+---
+
+## Roadmap Updating
+
+If a task is completed:
+
+- Mark it complete in [ROADMAP.md](ROADMAP.md)
+
+If phase scope or architecture changes:
+
+- Update [PROJECT_STATUS.md](PROJECT_STATUS.md)
+
+---
+
+## Output Style
+
+Be concise and technical.
+Prioritize actionable implementation details.
+
+---
+
+## Quick Reference
+
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Local development |
+| `npm run lint` | ESLint |
+| `npm run build` | Production build |
+| `npm test` | Vitest unit tests |
+
+Seed-only local dev: leave Supabase env vars empty in `.env.local` (see [README.md](README.md)).
