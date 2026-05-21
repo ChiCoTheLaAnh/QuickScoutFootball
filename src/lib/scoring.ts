@@ -1,4 +1,4 @@
-import type { Player, RecommendationRequest, RecommendationScoreBreakdown } from './types';
+import type { Player, RecommendationMode, RecommendationRequest, RecommendationScoreBreakdown } from './types';
 
 const EPSILON = 1e-9;
 
@@ -40,6 +40,42 @@ const ROLE_TARGET_RANGES: Record<string, Record<string, [number, number]>> = {
 };
 
 export type ScoreBreakdown = RecommendationScoreBreakdown;
+
+type ScoreWeights = {
+  similarity: number;
+  roleFit: number;
+  output: number;
+  affordability: number;
+  ageUpside: number;
+};
+
+const MODE_WEIGHTS: Record<RecommendationMode, ScoreWeights> = {
+  like_for_like: { similarity: 0.45, roleFit: 0.2, output: 0.15, affordability: 0.1, ageUpside: 0.1 },
+  cheaper: { similarity: 0.3, roleFit: 0.15, output: 0.1, affordability: 0.35, ageUpside: 0.1 },
+  young_upside: { similarity: 0.35, roleFit: 0.15, output: 0.1, affordability: 0.05, ageUpside: 0.35 },
+};
+
+export function filterCandidatesByMode(
+  target: Player,
+  candidates: Player[],
+  mode: RecommendationMode,
+): Player[] {
+  if (mode === 'cheaper') {
+    const targetMv = target.marketValueEur ?? Number.POSITIVE_INFINITY;
+    const cheaper = candidates.filter(
+      (candidate) => (candidate.marketValueEur ?? Number.POSITIVE_INFINITY) <= targetMv,
+    );
+    return cheaper.length > 0 ? cheaper : candidates;
+  }
+
+  if (mode === 'young_upside') {
+    const targetAge = target.age ?? 30;
+    const younger = candidates.filter((candidate) => (candidate.age ?? 0) < targetAge);
+    return younger.length > 0 ? younger : candidates;
+  }
+
+  return candidates;
+}
 
 export function normalizeValue(value: number, min: number, max: number): number {
   if (!Number.isFinite(value) || !Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
@@ -154,13 +190,14 @@ export function calculateReplacementScore(
   const output = calculateOutputScore(candidate, role);
   const affordability = calculateAffordabilityScore(candidate, request.maxMarketValueEur ?? undefined);
   const ageUpside = calculateAgeUpsideScore(candidate);
+  const weights = MODE_WEIGHTS[request.mode] ?? MODE_WEIGHTS.like_for_like;
 
   const total =
-    0.45 * similarity +
-    0.2 * roleFit +
-    0.15 * output +
-    0.1 * affordability +
-    0.1 * ageUpside;
+    weights.similarity * similarity +
+    weights.roleFit * roleFit +
+    weights.output * output +
+    weights.affordability * affordability +
+    weights.ageUpside * ageUpside;
 
   return {
     similarity,
