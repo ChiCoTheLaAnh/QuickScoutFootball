@@ -48,7 +48,7 @@ export default function HomePage() {
   const [results, setResults] = useState<ResultRow[]>([]);
   const [lastTarget, setLastTarget] = useState<Player | null>(null);
 
-  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const searchContainerRef = useRef<HTMLLabelElement>(null);
   const hasResults = results.length > 0;
 
   const roleOptions = useMemo(
