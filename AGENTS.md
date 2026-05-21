@@ -91,6 +91,9 @@ Prioritize actionable implementation details.
 | `npm run dev` | Local development |
 | `npm run lint` | ESLint |
 | `npm run build` | Production build |
-| `npm test` | Vitest unit tests |
+| `npm test` | Vitest unit + integration tests |
+| `npm run smoke:local` | Production build + local smoke test |
+| `npm run smoke` | Smoke test against `BASE_URL` (e.g. Vercel deploy) |
+| `npm run smoke:supabase` | Smoke test including `GET /api/recommendation-runs` |
 
 Seed-only local dev: leave Supabase env vars empty in `.env.local` (see [README.md](README.md)).

@@ -39,15 +39,15 @@ Avoid:
 - API routes: players list/search/detail, recommend, recommendation-runs, recommendations
 - Home UI: autocomplete search, recommendation form, results table with score breakdown
 - Seed fallback when Supabase env vars are unset; in-memory recommendation runs in seed-only mode
-- ESLint (flat config) and Vitest unit tests for scoring + request validation
+- ESLint (flat config), Vitest unit tests, and route integration tests (seed mode)
+- Deployment docs, smoke scripts (`npm run smoke`, `npm run smoke:local`, `npm run smoke:supabase`)
 - `npm run lint`, `npm run build`, and `npm test` passing
 - Provider module stubs (`apiFootball`, `footio`) and cron route stub (`/api/cron/refresh`)
 - Documentation: [README.md](README.md), [AGENTS.md](AGENTS.md)
 
 ## In Progress
 
-- Expanding automated test coverage (route integration / E2E not started)
-- Production deployment verification (Vercel config present; full deploy smoke test pending)
+- Hosted Supabase verification on production (optional DoD; use `npm run smoke:supabase` when env vars are set)
 - UX polish (loading/error states exist on home page; not uniform across all API consumers)
 
 ## Not Started (This Phase Or Later)
@@ -70,7 +70,7 @@ Avoid:
 The phase is complete when:
 
 - [x] Main user flow works end-to-end: search target player → submit filters → view top recommendations with explanations
-- [ ] App deploys successfully to Vercel with seed or Supabase-backed data
+- [x] App deploys successfully to Vercel with seed or Supabase-backed data (see README; verify with `npm run smoke` / `npm run smoke:local`)
 - [x] No critical runtime errors in local `npm run dev` for the core flow
 - [x] Basic loading and error states on the recommender UI
 - [x] README setup instructions are accurate

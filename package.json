@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "smoke": "node scripts/smoke-test.mjs",
+    "smoke:local": "bash scripts/smoke-local.sh",
+    "smoke:supabase": "SMOKE_SUPABASE=1 node scripts/smoke-test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.1",

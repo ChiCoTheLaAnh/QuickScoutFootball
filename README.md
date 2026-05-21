@@ -90,6 +90,93 @@ npm run dev
 
 Provider ingestion, authentication, and cron refresh logic are intentionally not implemented yet.
 
+## Verify locally
+
+```bash
+npm run lint
+npm run test
+npm run build
+```
+
+Optional production-mode smoke test (starts `next start` on port 3000):
+
+```bash
+npm run smoke:local
+```
+
+## Deploy to Vercel
+
+### Prerequisites
+
+- Vercel account linked to this repository
+- `npm run build` passes locally
+
+### Environment variables
+
+Set these in the Vercel project (**Settings → Environment Variables**):
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `NEXT_PUBLIC_APP_URL` | Recommended | Production URL, e.g. `https://your-app.vercel.app` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Optional | Omit for seed-only deploy |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional | Omit for seed-only deploy |
+| `SUPABASE_SERVICE_ROLE_KEY` | Optional | Server writes; falls back to anon key |
+| `CRON_SHARED_SECRET` | Future | Not used until cron ingestion is implemented |
+| Provider API keys | Future | See `.env.example`; not used in MVP |
+
+### Seed-only deploy (fastest MVP)
+
+1. Import the repo in Vercel (framework preset: **Next.js**).
+2. Leave Supabase variables **unset** — the app uses `src/data/seedPlayers.ts`.
+3. Deploy. Recommendation runs are stored in-memory per serverless instance (not durable across cold starts).
+
+### Supabase-backed deploy
+
+1. Create a Supabase project and run `supabase/schema.sql` then `supabase/seed.sql` in the SQL editor.
+2. Set all three Supabase env vars in Vercel.
+3. Deploy. Runs persist in `recommendation_runs`.
+
+### Cron note
+
+`vercel.json` schedules `GET /api/cron/refresh` daily. The route is a stub (`not_implemented`) until Phase 4 — safe to deploy, no ingestion runs yet.
+
+### Deploy commands
+
+```bash
+npx vercel          # preview deploy
+npx vercel --prod   # production deploy
+```
+
+### Post-deploy smoke test
+
+Replace `BASE_URL` with your deployment URL:
+
+```bash
+BASE_URL=https://your-app.vercel.app npm run smoke
+```
+
+Checks:
+
+- `GET /api/players/search?q=salah` returns results
+- `POST /api/recommend` returns recommendations for Mohamed Salah
+- `GET /` returns the home page
+
+### Hosted Supabase verification (optional)
+
+After a Supabase-backed deploy:
+
+1. Submit a recommendation on the home page (or via `POST /api/recommend`).
+2. Call `GET /api/recommendation-runs` — confirm a recent run appears.
+3. Call `GET /api/recommendation-runs/[runKey]` — confirm stored response payload.
+
+Or run against production with credentials configured:
+
+```bash
+BASE_URL=https://your-app.vercel.app npm run smoke:supabase
+```
+
+(`smoke:supabase` requires Supabase env vars on the target deployment.)
+
 ## API routes
 
 MVP route surface:

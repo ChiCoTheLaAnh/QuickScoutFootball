@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { filterRecommendationCandidates } from '@/src/lib/recommendCandidates';
 import { isValidRecommendationRequest } from '@/src/lib/recommendationRequest';
 import { calculateReplacementScore, explainRecommendation, filterCandidatesByMode } from '@/src/lib/scoring';
 import { createRecommendationRun } from '@/src/lib/supabase/recommendationRuns';
@@ -30,13 +31,7 @@ export async function POST(req: Request) {
 
   const filteredCandidates = filterCandidatesByMode(
     target,
-    players.filter((candidate) => {
-      if (candidate.id === target.id) return false;
-      if (json.maxAge !== null && (candidate.age ?? Number.POSITIVE_INFINITY) > json.maxAge) return false;
-      if (json.maxMarketValueEur !== null && (candidate.marketValueEur ?? Number.POSITIVE_INFINITY) > json.maxMarketValueEur) return false;
-      if (json.minMinutes !== null && (candidate.stats?.minutes ?? 0) < json.minMinutes) return false;
-      return true;
-    }),
+    filterRecommendationCandidates(target, players, json),
     json.mode,
   );
 
