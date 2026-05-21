@@ -140,3 +140,41 @@ export async function searchPlayers(term: string): Promise<Player[]> {
     return fullName.includes(query) || team.includes(query) || position.includes(query);
   });
 }
+
+export async function getPlayerById(id: string): Promise<Player | undefined> {
+  if (!isSupabaseConfigured()) {
+    return seedPlayers.find((player) => player.id === id);
+  }
+
+  const supabase = createServerSupabaseClient();
+  if (!supabase) {
+    return seedPlayers.find((player) => player.id === id);
+  }
+
+  const { data: player, error: playerError } = await supabase
+    .from('players')
+    .select('id, provider_player_id, provider_source, full_name, normalized_name, age, nationality, primary_position, team_name, league_name, market_value_eur')
+    .eq('id', id)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (playerError || !player) {
+    const players = await getPlayers();
+    return players.find((p) => p.id === id);
+  }
+
+  const statsByPlayerId = new Map<string, PlayerSeasonStatsRow>();
+  const { data: stats } = await supabase
+    .from('player_season_stats')
+    .select('player_id, appearances, minutes, goals, assists, expected_goals, expected_assists, shots, key_passes, pass_accuracy, tackles, interceptions, clean_sheets, saves')
+    .eq('player_id', id)
+    .order('season', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (stats?.[0]) {
+    statsByPlayerId.set(stats[0].player_id, stats[0]);
+  }
+
+  return mapPlayer(player as PlayerRow, statsByPlayerId);
+}

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 
-import { calculateReplacementScore, explainRecommendation } from '@/src/lib/scoring';
-import { getPlayers } from '@/src/lib/supabase/players';
+import { calculateReplacementScore, explainRecommendation, filterCandidatesByMode } from '@/src/lib/scoring';
+import { createRecommendationRun } from '@/src/lib/supabase/recommendationRuns';
+import { getPlayerByName, getPlayers } from '@/src/lib/supabase/players';
 import type { Recommendation, RecommendationMode, RecommendationRequest, RecommendationResponse } from '@/src/lib/types';
 
 const recommendationModes: RecommendationMode[] = ['like_for_like', 'cheaper', 'young_upside'];
@@ -28,6 +29,7 @@ function isValidRecommendationRequest(value: unknown): value is RecommendationRe
 }
 
 export async function POST(req: Request) {
+  const startedAt = Date.now();
   const json = await req.json().catch(() => null);
 
   if (!isValidRecommendationRequest(json)) {
@@ -37,26 +39,28 @@ export async function POST(req: Request) {
     );
   }
 
-  const players = await getPlayers();
-  const normalizedTargetName = json.targetPlayerName.trim().toLowerCase().replace(/\s+/g, ' ');
-  const target = players.find(
-    (player) => player.fullName.trim().toLowerCase().replace(/\s+/g, ' ') === normalizedTargetName,
-  );
+  const target = await getPlayerByName(json.targetPlayerName);
 
   if (!target) {
     return NextResponse.json(
-      { error: 'Target player not found in seed data.' },
+      { error: 'Target player not found.' },
       { status: 404 },
     );
   }
 
-  const filteredCandidates = players.filter((candidate) => {
-    if (candidate.id === target.id) return false;
-    if (json.maxAge !== null && (candidate.age ?? Number.POSITIVE_INFINITY) > json.maxAge) return false;
-    if (json.maxMarketValueEur !== null && (candidate.marketValueEur ?? Number.POSITIVE_INFINITY) > json.maxMarketValueEur) return false;
-    if (json.minMinutes !== null && (candidate.stats?.minutes ?? 0) < json.minMinutes) return false;
-    return true;
-  });
+  const players = await getPlayers();
+
+  const filteredCandidates = filterCandidatesByMode(
+    target,
+    players.filter((candidate) => {
+      if (candidate.id === target.id) return false;
+      if (json.maxAge !== null && (candidate.age ?? Number.POSITIVE_INFINITY) > json.maxAge) return false;
+      if (json.maxMarketValueEur !== null && (candidate.marketValueEur ?? Number.POSITIVE_INFINITY) > json.maxMarketValueEur) return false;
+      if (json.minMinutes !== null && (candidate.stats?.minutes ?? 0) < json.minMinutes) return false;
+      return true;
+    }),
+    json.mode,
+  );
 
   const recommendations: Recommendation[] = filteredCandidates
     .map((candidate) => {
@@ -74,5 +78,8 @@ export async function POST(req: Request) {
     .slice(0, 10);
 
   const response: RecommendationResponse = { target, recommendations };
+
+  void createRecommendationRun(json, response, startedAt).catch(() => undefined);
+
   return NextResponse.json(response);
 }

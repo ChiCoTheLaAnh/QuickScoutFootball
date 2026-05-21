@@ -92,16 +92,18 @@ Provider ingestion, authentication, and cron refresh logic are intentionally not
 
 ## API routes
 
-Current/expected MVP route surface:
+MVP route surface:
 
-- `GET /api/players` — list/search players.
-- `GET /api/players/:id` — fetch one player with latest stats.
-- `GET /api/recommendations` — fetch latest recommendation output.
-- `POST /api/recommendations/run` — create a recommendation run.
-- `GET /api/recommendation-runs` — view run history/metadata.
-- `GET /api/cron/refresh` — scheduled refresh endpoint used by Vercel cron.
+- `GET /api/players` — list all players, or search with `?q=`.
+- `GET /api/players/search?q=` — alias for player search (same response shape as `GET /api/players?q=`).
+- `GET /api/players/[id]` — fetch one player with latest stats.
+- `POST /api/recommend` — run the recommender and persist a `recommendation_runs` record.
+- `GET /api/recommendations` — fetch the latest completed recommendation output.
+- `GET /api/recommendation-runs` — list recent run metadata (newest first, limit 20).
+- `GET /api/recommendation-runs/[runKey]` — fetch one run including stored response payload.
+- `GET /api/cron/refresh` — scheduled refresh stub (configured in `vercel.json`, inactive until Phase 4).
 
-> If some routes are not implemented yet, this list acts as the contract for MVP delivery.
+Recommendation runs are stored in Supabase when configured; otherwise they are kept in an in-memory buffer for the current server process (seed-only local dev).
 
 ## Seed-data-first architecture
 

@@ -1,8 +1,16 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 
-import type { Recommendation, RecommendationMode, RecommendationRequest, RecommendationResponse } from '@/src/lib/types';
+import type { Player, Recommendation, RecommendationMode, RecommendationRequest, RecommendationResponse } from '@/src/lib/types';
+
+type PlayerSearchResult = {
+  id: string;
+  fullName: string;
+  team?: string;
+  position?: string;
+  nationality?: string;
+};
 
 type ResultRow = {
   rank?: number;
@@ -26,6 +34,9 @@ type ResultRow = {
 
 export default function HomePage() {
   const [targetPlayerName, setTargetPlayerName] = useState('');
+  const [selectedTarget, setSelectedTarget] = useState<PlayerSearchResult | null>(null);
+  const [searchResults, setSearchResults] = useState<PlayerSearchResult[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [role, setRole] = useState('');
   const [maxAge, setMaxAge] = useState('30');
   const [maxMarketValueEur, setMaxMarketValueEur] = useState('60000000');
@@ -35,13 +46,55 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<ResultRow[]>([]);
+  const [lastTarget, setLastTarget] = useState<Player | null>(null);
 
+  const searchContainerRef = useRef<HTMLDivElement>(null);
   const hasResults = results.length > 0;
 
   const roleOptions = useMemo(
     () => ['GK', 'CB', 'RB', 'LB', 'DM', 'CM', 'AM', 'RW', 'LW', 'ST'],
     [],
   );
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setSearchOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (!targetPlayerName.trim()) {
+      setSearchResults([]);
+      setSearchOpen(false);
+      return;
+    }
+
+    if (selectedTarget && selectedTarget.fullName === targetPlayerName) {
+      setSearchResults([]);
+      setSearchOpen(false);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/players/search?q=${encodeURIComponent(targetPlayerName)}`);
+        if (!response.ok) return;
+        const payload = await response.json() as { results: PlayerSearchResult[] };
+        setSearchResults(payload.results ?? []);
+        setSearchOpen((payload.results ?? []).length > 0);
+      } catch {
+        setSearchResults([]);
+        setSearchOpen(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [targetPlayerName, selectedTarget]);
 
   const parseNullableNumber = (value: string): number | null => {
     if (value.trim() === '') return null;
@@ -65,11 +118,27 @@ export default function HomePage() {
     };
   };
 
+  const handleSelectPlayer = (player: PlayerSearchResult) => {
+    setTargetPlayerName(player.fullName);
+    setSelectedTarget(player);
+    if (player.position) setRole(player.position);
+    setSearchOpen(false);
+    setSearchResults([]);
+  };
+
+  const handleTargetNameChange = (value: string) => {
+    setTargetPlayerName(value);
+    if (selectedTarget && selectedTarget.fullName !== value) {
+      setSelectedTarget(null);
+    }
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
     setError(null);
     setResults([]);
+    setLastTarget(null);
 
     try {
       const requestBody: RecommendationRequest = {
@@ -105,6 +174,7 @@ export default function HomePage() {
         return;
       }
 
+      setLastTarget(payload.target);
       setResults(payload.recommendations.map(mapRecommendation));
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'API error. Please try again.');
@@ -120,15 +190,37 @@ export default function HomePage() {
         <p className="mt-2 text-sm text-slate-600">Find replacement candidates with explainable scoring.</p>
 
         <form onSubmit={handleSubmit} className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <label className="flex flex-col gap-1 text-sm font-medium">
+          <label className="relative flex flex-col gap-1 text-sm font-medium" ref={searchContainerRef}>
             Target player name
             <input
               required
+              autoComplete="off"
               value={targetPlayerName}
-              onChange={(e) => setTargetPlayerName(e.target.value)}
+              onChange={(e) => handleTargetNameChange(e.target.value)}
+              onFocus={() => {
+                if (searchResults.length > 0) setSearchOpen(true);
+              }}
               className="rounded-lg border border-slate-300 px-3 py-2 outline-none ring-indigo-200 focus:ring"
-              placeholder="e.g. Martin Ødegaard"
+              placeholder="e.g. Mohamed Salah"
             />
+            {searchOpen && searchResults.length > 0 && (
+              <ul className="absolute top-full z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                {searchResults.map((player) => (
+                  <li key={player.id}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectPlayer(player)}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-indigo-50"
+                    >
+                      <span className="font-medium">{player.fullName}</span>
+                      <span className="ml-2 text-slate-500">
+                        {[player.position, player.team].filter(Boolean).join(' · ')}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </label>
 
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -207,6 +299,18 @@ export default function HomePage() {
 
       <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-xl font-semibold">Results</h2>
+
+        {lastTarget && (
+          <div className="mt-3 rounded-lg bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+            <span className="font-semibold">Target:</span>{' '}
+            {lastTarget.fullName}
+            {lastTarget.team ? ` · ${lastTarget.team}` : ''}
+            {lastTarget.position ? ` · ${lastTarget.position}` : ''}
+            {typeof lastTarget.marketValueEur === 'number'
+              ? ` · €${lastTarget.marketValueEur.toLocaleString()}`
+              : ''}
+          </div>
+        )}
 
         {!loading && !error && !hasResults && (
           <p className="mt-3 text-sm text-slate-600">No results yet. Submit the form to see candidate recommendations.</p>
