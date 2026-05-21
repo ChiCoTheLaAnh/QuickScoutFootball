@@ -56,6 +56,12 @@ export default function HomePage() {
     [],
   );
 
+  const trimmedTargetName = targetPlayerName.trim();
+  const isSelectionLocked = Boolean(selectedTarget && selectedTarget.fullName === targetPlayerName);
+  const shouldFetchSuggestions = trimmedTargetName.length > 0 && !isSelectionLocked;
+  const visibleSearchResults = shouldFetchSuggestions ? searchResults : [];
+  const isSearchDropdownOpen = shouldFetchSuggestions && searchOpen && visibleSearchResults.length > 0;
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
@@ -68,17 +74,7 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!targetPlayerName.trim()) {
-      setSearchResults([]);
-      setSearchOpen(false);
-      return;
-    }
-
-    if (selectedTarget && selectedTarget.fullName === targetPlayerName) {
-      setSearchResults([]);
-      setSearchOpen(false);
-      return;
-    }
+    if (!shouldFetchSuggestions) return;
 
     const timeout = setTimeout(async () => {
       try {
@@ -94,7 +90,7 @@ export default function HomePage() {
     }, 300);
 
     return () => clearTimeout(timeout);
-  }, [targetPlayerName, selectedTarget]);
+  }, [targetPlayerName, shouldFetchSuggestions]);
 
   const parseNullableNumber = (value: string): number | null => {
     if (value.trim() === '') return null;
@@ -198,14 +194,14 @@ export default function HomePage() {
               value={targetPlayerName}
               onChange={(e) => handleTargetNameChange(e.target.value)}
               onFocus={() => {
-                if (searchResults.length > 0) setSearchOpen(true);
+                if (visibleSearchResults.length > 0) setSearchOpen(true);
               }}
               className="rounded-lg border border-slate-300 px-3 py-2 outline-none ring-indigo-200 focus:ring"
               placeholder="e.g. Mohamed Salah"
             />
-            {searchOpen && searchResults.length > 0 && (
+            {isSearchDropdownOpen && (
               <ul className="absolute top-full z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
-                {searchResults.map((player) => (
+                {visibleSearchResults.map((player) => (
                   <li key={player.id}>
                     <button
                       type="button"
