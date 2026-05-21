@@ -23,7 +23,7 @@ QuickScout Football is an MVP scouting intelligence app. It helps identify footb
 
 **What is broken / missing:**
 
-- No automated test suite (`npm test` not defined)
+- Minimal unit tests for core scoring helpers (`npm test`); no API/E2E coverage yet
 - Provider ingestion not implemented (stubs return empty / `not_implemented`)
 - Cron refresh (`GET /api/cron/refresh`) returns `not_implemented` — scheduled in Vercel but inactive until Phase 4
 - Authentication not implemented
@@ -46,14 +46,13 @@ Open [http://localhost:3000](http://localhost:3000).
 ```bash
 npm run lint
 npm run build
+npm test
 ```
-
-(`npm test` is not configured yet; use lint + build until tests are added.)
 
 ## Rules for the agent
 
 - Do not rewrite unrelated files.
 - Prefer small commits.
 - Always explain changed files.
-- Run `npm run lint` and `npm run build` before final answer (add tests when a test runner exists).
+- Run `npm run lint`, `npm run build`, and `npm test` before final answer.
 - If unsure, inspect files before editing.
