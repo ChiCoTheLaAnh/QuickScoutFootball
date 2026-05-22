@@ -23,7 +23,17 @@ insert into public.players (
   ('00000000-0000-4000-8000-000000000007', 'seed-nico-williams', 'seed', 'nico-williams', 'Nico Williams', 'nico williams', 23, 'Spain', 'LW', 'Athletic Club', 'La Liga', 70000000),
   ('00000000-0000-4000-8000-000000000008', 'seed-michael-olise', 'seed', 'michael-olise', 'Michael Olise', 'michael olise', 25, 'France', 'RW', 'Bayern Munich', 'Bundesliga', 75000000),
   ('00000000-0000-4000-8000-000000000009', 'seed-jamal-musiala', 'seed', 'jamal-musiala', 'Jamal Musiala', 'jamal musiala', 23, 'Germany', 'AM', 'Bayern Munich', 'Bundesliga', 130000000),
-  ('00000000-0000-4000-8000-000000000010', 'seed-florian-wirtz', 'seed', 'florian-wirtz', 'Florian Wirtz', 'florian wirtz', 23, 'Germany', 'AM', 'Bayer Leverkusen', 'Bundesliga', 140000000)
+  ('00000000-0000-4000-8000-000000000010', 'seed-florian-wirtz', 'seed', 'florian-wirtz', 'Florian Wirtz', 'florian wirtz', 23, 'Germany', 'AM', 'Bayer Leverkusen', 'Bundesliga', 140000000),
+  ('00000000-0000-4000-8000-000000000011', 'seed-declan-rice', 'seed', 'declan-rice', 'Declan Rice', 'declan rice', 27, 'England', 'DM', 'Arsenal', 'Premier League', 110000000),
+  ('00000000-0000-4000-8000-000000000012', 'seed-martin-zubimendi', 'seed', 'martin-zubimendi', 'Martin Zubimendi', 'martin zubimendi', 27, 'Spain', 'DM', 'Real Sociedad', 'La Liga', 60000000),
+  ('00000000-0000-4000-8000-000000000013', 'seed-federico-valverde', 'seed', 'federico-valverde', 'Federico Valverde', 'federico valverde', 28, 'Uruguay', 'CM', 'Real Madrid', 'La Liga', 120000000),
+  ('00000000-0000-4000-8000-000000000014', 'seed-alexis-mac-allister', 'seed', 'alexis-mac-allister', 'Alexis Mac Allister', 'alexis mac allister', 27, 'Argentina', 'CM', 'Liverpool', 'Premier League', 80000000),
+  ('00000000-0000-4000-8000-000000000015', 'seed-ruben-dias', 'seed', 'ruben-dias', 'Ruben Dias', 'ruben dias', 29, 'Portugal', 'CB', 'Manchester City', 'Premier League', 75000000),
+  ('00000000-0000-4000-8000-000000000016', 'seed-william-saliba', 'seed', 'william-saliba', 'William Saliba', 'william saliba', 25, 'France', 'CB', 'Arsenal', 'Premier League', 85000000),
+  ('00000000-0000-4000-8000-000000000017', 'seed-jeremie-frimpong', 'seed', 'jeremie-frimpong', 'Jeremie Frimpong', 'jeremie frimpong', 25, 'Netherlands', 'RB', 'Bayer Leverkusen', 'Bundesliga', 65000000),
+  ('00000000-0000-4000-8000-000000000018', 'seed-alphonso-davies', 'seed', 'alphonso-davies', 'Alphonso Davies', 'alphonso davies', 26, 'Canada', 'LB', 'Bayern Munich', 'Bundesliga', 70000000),
+  ('00000000-0000-4000-8000-000000000019', 'seed-diogo-costa', 'seed', 'diogo-costa', 'Diogo Costa', 'diogo costa', 27, 'Portugal', 'GK', 'FC Porto', 'Primeira Liga', 45000000),
+  ('00000000-0000-4000-8000-000000000020', 'seed-giorgi-mamardashvili', 'seed', 'giorgi-mamardashvili', 'Giorgi Mamardashvili', 'giorgi mamardashvili', 26, 'Georgia', 'GK', 'Valencia', 'La Liga', 40000000)
 on conflict (provider_source, provider_player_id) do update set
   slug = excluded.slug,
   full_name = excluded.full_name,
@@ -53,18 +63,30 @@ insert into public.player_season_stats (
   key_passes,
   pass_accuracy,
   tackles,
-  interceptions
+  interceptions,
+  clean_sheets,
+  saves
 ) values
-  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-mohamed-salah'), 'seed-mohamed-salah-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 36, 2920, 22, 12, 20.1, 9.8, 133, 71, 82, 28, 16),
-  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-bukayo-saka'), 'seed-bukayo-saka-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 34, 2790, 17, 11, 14.9, 10.7, 105, 67, 84, 31, 19),
-  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-rodrygo'), 'seed-rodrygo-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 35, 2610, 14, 9, 12.6, 7.1, 96, 52, 87, 23, 14),
-  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-khvicha-kvaratskhelia'), 'seed-khvicha-kvaratskhelia-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 33, 2745, 13, 10, 13.8, 9.5, 118, 69, 83, 27, 15),
-  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-rafael-leao'), 'seed-rafael-leao-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 31, 2520, 11, 9, 11.4, 7.9, 101, 54, 81, 20, 12),
-  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-leroy-sane'), 'seed-leroy-sane-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 30, 2380, 10, 13, 9.4, 10.2, 86, 64, 85, 24, 13),
-  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-nico-williams'), 'seed-nico-williams-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 32, 2460, 8, 14, 7.2, 11.0, 79, 73, 82, 30, 17),
-  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-michael-olise'), 'seed-michael-olise-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 29, 2270, 9, 12, 8.1, 10.8, 74, 70, 84, 22, 11),
-  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-jamal-musiala'), 'seed-jamal-musiala-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 31, 2485, 12, 8, 10.8, 6.3, 93, 48, 88, 26, 15),
-  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-florian-wirtz'), 'seed-florian-wirtz-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 33, 2670, 11, 15, 9.7, 12.5, 89, 86, 89, 29, 18)
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-mohamed-salah'), 'seed-mohamed-salah-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 36, 2920, 22, 12, 20.1, 9.8, 133, 71, 82, 28, 16, null, null),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-bukayo-saka'), 'seed-bukayo-saka-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 34, 2790, 17, 11, 14.9, 10.7, 105, 67, 84, 31, 19, null, null),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-rodrygo'), 'seed-rodrygo-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 35, 2610, 14, 9, 12.6, 7.1, 96, 52, 87, 23, 14, null, null),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-khvicha-kvaratskhelia'), 'seed-khvicha-kvaratskhelia-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 33, 2745, 13, 10, 13.8, 9.5, 118, 69, 83, 27, 15, null, null),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-rafael-leao'), 'seed-rafael-leao-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 31, 2520, 11, 9, 11.4, 7.9, 101, 54, 81, 20, 12, null, null),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-leroy-sane'), 'seed-leroy-sane-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 30, 2380, 10, 13, 9.4, 10.2, 86, 64, 85, 24, 13, null, null),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-nico-williams'), 'seed-nico-williams-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 32, 2460, 8, 14, 7.2, 11.0, 79, 73, 82, 30, 17, null, null),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-michael-olise'), 'seed-michael-olise-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 29, 2270, 9, 12, 8.1, 10.8, 74, 70, 84, 22, 11, null, null),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-jamal-musiala'), 'seed-jamal-musiala-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 31, 2485, 12, 8, 10.8, 6.3, 93, 48, 88, 26, 15, null, null),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-florian-wirtz'), 'seed-florian-wirtz-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 33, 2670, 11, 15, 9.7, 12.5, 89, 86, 89, 29, 18, null, null),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-declan-rice'), 'seed-declan-rice-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 35, 3010, 6, 7, 5.2, 5.9, 47, 43, 91, 78, 55, null, null),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-martin-zubimendi'), 'seed-martin-zubimendi-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 34, 2875, 3, 4, 2.1, 3.0, 26, 31, 90, 88, 62, null, null),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-federico-valverde'), 'seed-federico-valverde-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 36, 2980, 8, 6, 7.0, 4.8, 64, 40, 89, 73, 44, null, null),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-alexis-mac-allister'), 'seed-alexis-mac-allister-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 33, 2760, 6, 7, 5.5, 6.4, 51, 58, 90, 69, 39, null, null),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-ruben-dias'), 'seed-ruben-dias-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 33, 2830, 2, 1, 1.8, 0.9, 19, 10, 93, 42, 61, null, null),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-william-saliba'), 'seed-william-saliba-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 34, 3060, 2, 1, 1.7, 1.1, 17, 9, 94, 46, 66, null, null),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-jeremie-frimpong'), 'seed-jeremie-frimpong-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 31, 2410, 7, 8, 6.4, 5.6, 58, 41, 86, 57, 32, null, null),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-alphonso-davies'), 'seed-alphonso-davies-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 29, 2320, 3, 6, 2.9, 4.4, 37, 33, 88, 62, 35, null, null),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-diogo-costa'), 'seed-diogo-costa-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 34, 3060, 0, 0, 0, 0, 0, 0, 79, 1, 7, 15, 108),
+  ((select id from public.players where provider_source = 'seed' and provider_player_id = 'seed-giorgi-mamardashvili'), 'seed-giorgi-mamardashvili-2025', 'seed', '2025', 'Domestic League', 'domestic-league', 33, 2970, 0, 0, 0, 0, 0, 0, 75, 1, 6, 12, 119)
 on conflict (player_id, provider_source, season, competition_provider_id) do update set
   provider_stat_id = excluded.provider_stat_id,
   competition = excluded.competition,
@@ -79,4 +101,6 @@ on conflict (player_id, provider_source, season, competition_provider_id) do upd
   pass_accuracy = excluded.pass_accuracy,
   tackles = excluded.tackles,
   interceptions = excluded.interceptions,
+  clean_sheets = excluded.clean_sheets,
+  saves = excluded.saves,
   updated_at = now();

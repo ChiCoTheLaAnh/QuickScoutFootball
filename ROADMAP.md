@@ -54,7 +54,7 @@ Priority order: complete **Phase 2 — MVP** items before **Phase 3 — Producti
 
 ## Planned
 
-- [ ] E2E tests (Playwright or Next experimental test runner)
+- [x] E2E tests (Playwright or Next experimental test runner)
 - [x] CI pipeline: lint + test + build on pull requests
 - [ ] Monitoring and logging (recommendation run failures, API errors)
 - [ ] Rate limiting on public API routes
@@ -71,6 +71,7 @@ Aligned with [README.md](README.md) provider integration plan.
 
 - [x] Seed canonical players and season stats
 - [x] Ranking/recommendation logic against stable schema
+- [x] Keep Supabase seed data in parity with local seed fallback
 
 ## Phase 2 — Single provider sync
 

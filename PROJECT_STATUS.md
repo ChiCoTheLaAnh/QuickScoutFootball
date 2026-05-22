@@ -48,6 +48,8 @@ Avoid:
 - API error responses include stable machine-readable codes while preserving `error` strings
 - Results UI includes distinct empty states and mobile-friendly recommendation cards
 - GitHub Actions CI workflow runs lint, tests, and build on pull requests and pushes to `main`
+- Supabase seed data is aligned with local seed fallback players and season stats
+- Playwright E2E coverage verifies the core search-to-recommendation browser flow
 
 ## In Progress
 
