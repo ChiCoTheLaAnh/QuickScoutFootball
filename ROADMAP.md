@@ -27,18 +27,18 @@ Priority order: complete **Phase 2 — MVP** items before **Phase 3 — Producti
 - [x] Request payload validation with unit tests
 - [x] Fix production build and lint pipeline
 - [x] Deploy MVP to Vercel and smoke-test core flow (`npm run smoke:local` or `BASE_URL=... npm run smoke` after `vercel --prod`)
-- [ ] Verify Supabase-backed runs in hosted environment (optional; `npm run smoke:supabase` on Supabase-backed deploy)
+- [x] Verify Supabase-backed runs in hosted environment (optional; `npm run smoke:supabase` on Supabase-backed deploy)
 
 ## Medium Priority
 
 - [x] Expand unit tests (candidate filtering via `recommendCandidates.ts`)
 - [x] Add route-level integration tests for `/api/recommend` and `/api/players/search`
-- [ ] Improve API error responses and client-side error mapping
+- [x] Improve API error responses and client-side error mapping
 - [x] Document Vercel env vars and cron secret strategy (see README Deploy to Vercel)
 
 ## Low Priority
 
-- [ ] UI polish (empty states, table responsiveness)
+- [x] UI polish (empty states, table responsiveness)
 - [ ] README diagram or quick-start for scouts (non-technical users)
 
 ## Explicitly Out Of Scope (Phase 2)

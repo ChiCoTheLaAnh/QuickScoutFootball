@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-**Phase 2 — MVP Development**
+**Phase 2 — MVP Development complete; ready for Phase 3 — Production Readiness**
 
 Data pipeline context (see [README.md](README.md)): **Phase 1 (Seed baseline)** is complete. **Phase 2 (Single provider sync)** has not started.
 
@@ -44,11 +44,13 @@ Avoid:
 - `npm run lint`, `npm run build`, and `npm test` passing
 - Provider module stubs (`apiFootball`, `footio`) and cron route stub (`/api/cron/refresh`)
 - Documentation: [README.md](README.md), [AGENTS.md](AGENTS.md)
+- Hosted Supabase-backed recommendation runs verified
+- API error responses include stable machine-readable codes while preserving `error` strings
+- Results UI includes distinct empty states and mobile-friendly recommendation cards
 
 ## In Progress
 
-- Hosted Supabase verification on production (optional DoD; use `npm run smoke:supabase` when env vars are set)
-- UX polish (loading/error states exist on home page; not uniform across all API consumers)
+- None
 
 ## Not Started (This Phase Or Later)
 
@@ -75,7 +77,7 @@ The phase is complete when:
 - [x] Basic loading and error states on the recommender UI
 - [x] README setup instructions are accurate
 - [x] `npm run lint`, `npm run build`, and `npm test` pass
-- [ ] Optional: Supabase-backed recommendation runs verified in a hosted environment
+- [x] Optional: Supabase-backed recommendation runs verified in a hosted environment
 
 ---
 

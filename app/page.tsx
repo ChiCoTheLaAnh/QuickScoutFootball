@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 
+import type { ApiErrorResponse } from '@/src/lib/apiErrors';
 import type { Player, Recommendation, RecommendationMode, RecommendationRequest, RecommendationResponse } from '@/src/lib/types';
 
 type PlayerSearchResult = {
@@ -32,6 +33,35 @@ type ResultRow = {
   };
 };
 
+const apiErrorMessages: Partial<Record<ApiErrorResponse['code'], string>> = {
+  INVALID_RECOMMENDATION_REQUEST: 'Check the required fields and numeric filters, then try again.',
+  TARGET_PLAYER_NOT_FOUND: 'Target player not found. Choose a player from the search suggestions or refine the name.',
+  PLAYER_SEARCH_FAILED: 'Player search is temporarily unavailable. Try again shortly.',
+};
+
+function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
+  if (!value || typeof value !== 'object') return false;
+  const payload = value as Record<string, unknown>;
+  return typeof payload.error === 'string' && typeof payload.code === 'string';
+}
+
+function formatMarketValue(value?: number): string {
+  return typeof value === 'number' ? `€${value.toLocaleString()}` : '—';
+}
+
+function formatScore(value?: number): string {
+  return typeof value === 'number' ? value.toFixed(1) : '—';
+}
+
+function formatMode(mode?: RecommendationMode): string {
+  if (!mode) return '—';
+  return {
+    like_for_like: 'Like-for-like',
+    cheaper: 'Cheaper alternative',
+    young_upside: 'Young upside',
+  }[mode];
+}
+
 export default function HomePage() {
   const [targetPlayerName, setTargetPlayerName] = useState('');
   const [selectedTarget, setSelectedTarget] = useState<PlayerSearchResult | null>(null);
@@ -47,6 +77,7 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<ResultRow[]>([]);
   const [lastTarget, setLastTarget] = useState<Player | null>(null);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   const searchContainerRef = useRef<HTMLLabelElement>(null);
   const hasResults = results.length > 0;
@@ -79,7 +110,11 @@ export default function HomePage() {
     const timeout = setTimeout(async () => {
       try {
         const response = await fetch(`/api/players/search?q=${encodeURIComponent(targetPlayerName)}`);
-        if (!response.ok) return;
+        if (!response.ok) {
+          setSearchResults([]);
+          setSearchOpen(false);
+          return;
+        }
         const payload = await response.json() as { results: PlayerSearchResult[] };
         setSearchResults(payload.results ?? []);
         setSearchOpen((payload.results ?? []).length > 0);
@@ -114,6 +149,14 @@ export default function HomePage() {
     };
   };
 
+  const mapApiErrorMessage = async (response: Response): Promise<string> => {
+    const payload = await response.json().catch(() => null) as unknown;
+    if (isApiErrorResponse(payload)) {
+      return apiErrorMessages[payload.code] ?? payload.error;
+    }
+    return `API error (${response.status})`;
+  };
+
   const handleSelectPlayer = (player: PlayerSearchResult) => {
     setTargetPlayerName(player.fullName);
     setSelectedTarget(player);
@@ -135,6 +178,7 @@ export default function HomePage() {
     setError(null);
     setResults([]);
     setLastTarget(null);
+    setHasSubmitted(true);
 
     try {
       const requestBody: RecommendationRequest = {
@@ -153,11 +197,7 @@ export default function HomePage() {
       });
 
       if (!response.ok) {
-        const payload = await response.json().catch(() => null) as { error?: string } | null;
-        if (response.status === 404) {
-          throw new Error(payload?.error ?? 'Target player not found.');
-        }
-        throw new Error(payload?.error ?? `API error (${response.status})`);
+        throw new Error(await mapApiErrorMessage(response));
       }
 
       const payload = await response.json() as RecommendationResponse;
@@ -309,60 +349,130 @@ export default function HomePage() {
         )}
 
         {!loading && !error && !hasResults && (
-          <p className="mt-3 text-sm text-slate-600">No results yet. Submit the form to see candidate recommendations.</p>
+          <div className="mt-3 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            {hasSubmitted
+              ? 'No recommendations matched those filters. Try widening the age, value, or minutes constraints.'
+              : 'No results yet. Submit the form to see candidate recommendations.'}
+          </div>
         )}
 
-        {loading && <p className="mt-3 text-sm text-slate-600">Loading recommendations…</p>}
+        {loading && (
+          <div className="mt-3 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            Loading recommendations…
+          </div>
+        )}
 
-        {error && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <div className="mt-3 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
         {hasResults && (
-          <div className="mt-4 overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                <tr>
-                  <th className="px-3 py-2">Rank</th>
-                  <th className="px-3 py-2">Player</th>
-                  <th className="px-3 py-2">Age</th>
-                  <th className="px-3 py-2">Club</th>
-                  <th className="px-3 py-2">League</th>
-                  <th className="px-3 py-2">Position</th>
-                  <th className="px-3 py-2">Market value</th>
-                  <th className="px-3 py-2">Score / 100</th>
-                  <th className="px-3 py-2">Candidate type</th>
-                  <th className="px-3 py-2">Explanation</th>
-                  <th className="px-3 py-2">Similarity</th>
-                  <th className="px-3 py-2">Role fit</th>
-                  <th className="px-3 py-2">Output</th>
-                  <th className="px-3 py-2">Affordability</th>
-                  <th className="px-3 py-2">Age upside</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
-                {results.map((row, idx) => (
-                  <tr key={`${row.playerName}-${idx}`} className="align-top hover:bg-slate-50/60">
-                    <td className="px-3 py-2 font-medium">{row.rank ?? idx + 1}</td>
-                    <td className="px-3 py-2 font-medium">{row.playerName}</td>
-                    <td className="px-3 py-2">{row.age ?? '—'}</td>
-                    <td className="px-3 py-2">{row.club ?? '—'}</td>
-                    <td className="px-3 py-2">{row.league ?? '—'}</td>
-                    <td className="px-3 py-2">{row.position ?? '—'}</td>
-                    <td className="px-3 py-2">
-                      {typeof row.marketValueEur === 'number' ? `€${row.marketValueEur.toLocaleString()}` : '—'}
-                    </td>
-                    <td className="px-3 py-2">{typeof row.score === 'number' ? row.score.toFixed(1) : '—'}</td>
-                    <td className="px-3 py-2">{row.candidateType ?? '—'}</td>
-                    <td className="max-w-md px-3 py-2 text-slate-700">{row.explanation ?? '—'}</td>
-                    <td className="px-3 py-2">{row.breakdown?.similarity ?? '—'}</td>
-                    <td className="px-3 py-2">{row.breakdown?.roleFit ?? '—'}</td>
-                    <td className="px-3 py-2">{row.breakdown?.output ?? '—'}</td>
-                    <td className="px-3 py-2">{row.breakdown?.affordability ?? '—'}</td>
-                    <td className="px-3 py-2">{row.breakdown?.ageUpside ?? '—'}</td>
+          <>
+            <div className="mt-4 grid gap-3 md:hidden">
+              {results.map((row, idx) => (
+                <article key={`${row.playerName}-${idx}`} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Rank {row.rank ?? idx + 1}
+                      </p>
+                      <h3 className="mt-1 text-base font-semibold text-slate-950">{row.playerName}</h3>
+                      <p className="mt-1 text-sm text-slate-600">
+                        {[row.position, row.club].filter(Boolean).join(' · ') || 'Club and role unavailable'}
+                      </p>
+                    </div>
+                    <div className="shrink-0 rounded-lg bg-indigo-50 px-3 py-2 text-right">
+                      <p className="text-xs font-medium text-indigo-700">Score</p>
+                      <p className="text-lg font-semibold text-indigo-950">{formatScore(row.score)}</p>
+                    </div>
+                  </div>
+
+                  <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <dt className="text-xs font-medium text-slate-500">Age</dt>
+                      <dd className="mt-0.5 font-medium text-slate-900">{row.age ?? '—'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium text-slate-500">Market value</dt>
+                      <dd className="mt-0.5 font-medium text-slate-900">{formatMarketValue(row.marketValueEur)}</dd>
+                    </div>
+                    <div className="col-span-2">
+                      <dt className="text-xs font-medium text-slate-500">Candidate type</dt>
+                      <dd className="mt-0.5 font-medium text-slate-900">{formatMode(row.candidateType)}</dd>
+                    </div>
+                  </dl>
+
+                  <p className="mt-4 text-sm leading-6 text-slate-700">{row.explanation ?? 'No explanation available.'}</p>
+
+                  <dl className="mt-4 grid grid-cols-2 gap-2 rounded-lg bg-slate-50 p-3 text-xs text-slate-700">
+                    <div>
+                      <dt className="font-medium text-slate-500">Similarity</dt>
+                      <dd className="mt-0.5">{row.breakdown?.similarity ?? '—'}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium text-slate-500">Role fit</dt>
+                      <dd className="mt-0.5">{row.breakdown?.roleFit ?? '—'}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium text-slate-500">Output</dt>
+                      <dd className="mt-0.5">{row.breakdown?.output ?? '—'}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium text-slate-500">Affordability</dt>
+                      <dd className="mt-0.5">{row.breakdown?.affordability ?? '—'}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-medium text-slate-500">Age upside</dt>
+                      <dd className="mt-0.5">{row.breakdown?.ageUpside ?? '—'}</dd>
+                    </div>
+                  </dl>
+                </article>
+              ))}
+            </div>
+
+            <div className="mt-4 hidden overflow-x-auto md:block">
+              <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  <tr>
+                    <th className="px-3 py-2">Rank</th>
+                    <th className="px-3 py-2">Player</th>
+                    <th className="px-3 py-2">Age</th>
+                    <th className="px-3 py-2">Club</th>
+                    <th className="px-3 py-2">League</th>
+                    <th className="px-3 py-2">Position</th>
+                    <th className="px-3 py-2">Market value</th>
+                    <th className="px-3 py-2">Score / 100</th>
+                    <th className="px-3 py-2">Candidate type</th>
+                    <th className="px-3 py-2">Explanation</th>
+                    <th className="px-3 py-2">Similarity</th>
+                    <th className="px-3 py-2">Role fit</th>
+                    <th className="px-3 py-2">Output</th>
+                    <th className="px-3 py-2">Affordability</th>
+                    <th className="px-3 py-2">Age upside</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {results.map((row, idx) => (
+                    <tr key={`${row.playerName}-${idx}`} className="align-top hover:bg-slate-50/60">
+                      <td className="px-3 py-2 font-medium">{row.rank ?? idx + 1}</td>
+                      <td className="px-3 py-2 font-medium">{row.playerName}</td>
+                      <td className="px-3 py-2">{row.age ?? '—'}</td>
+                      <td className="px-3 py-2">{row.club ?? '—'}</td>
+                      <td className="px-3 py-2">{row.league ?? '—'}</td>
+                      <td className="px-3 py-2">{row.position ?? '—'}</td>
+                      <td className="px-3 py-2">{formatMarketValue(row.marketValueEur)}</td>
+                      <td className="px-3 py-2">{formatScore(row.score)}</td>
+                      <td className="px-3 py-2">{formatMode(row.candidateType)}</td>
+                      <td className="max-w-md px-3 py-2 text-slate-700">{row.explanation ?? '—'}</td>
+                      <td className="px-3 py-2">{row.breakdown?.similarity ?? '—'}</td>
+                      <td className="px-3 py-2">{row.breakdown?.roleFit ?? '—'}</td>
+                      <td className="px-3 py-2">{row.breakdown?.output ?? '—'}</td>
+                      <td className="px-3 py-2">{row.breakdown?.affordability ?? '—'}</td>
+                      <td className="px-3 py-2">{row.breakdown?.ageUpside ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
     </main>

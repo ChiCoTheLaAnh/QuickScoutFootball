@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { apiError } from '@/src/lib/apiErrors';
 import { filterRecommendationCandidates } from '@/src/lib/recommendCandidates';
 import { isValidRecommendationRequest } from '@/src/lib/recommendationRequest';
 import { calculateReplacementScore, explainRecommendation, filterCandidatesByMode } from '@/src/lib/scoring';
@@ -12,19 +13,17 @@ export async function POST(req: Request) {
   const json = await req.json().catch(() => null);
 
   if (!isValidRecommendationRequest(json)) {
-    return NextResponse.json(
-      { error: 'Invalid RecommendationRequest payload.' },
-      { status: 400 },
+    return apiError(
+      'Invalid RecommendationRequest payload.',
+      'INVALID_RECOMMENDATION_REQUEST',
+      400,
     );
   }
 
   const target = await getPlayerByName(json.targetPlayerName);
 
   if (!target) {
-    return NextResponse.json(
-      { error: 'Target player not found.' },
-      { status: 404 },
-    );
+    return apiError('Target player not found.', 'TARGET_PLAYER_NOT_FOUND', 404);
   }
 
   const players = await getPlayers();

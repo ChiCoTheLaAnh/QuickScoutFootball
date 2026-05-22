@@ -43,6 +43,10 @@ describe('POST /api/recommend (seed mode)', () => {
   it('returns 400 for invalid payload', async () => {
     const response = await postRecommend({ targetPlayerName: '' });
     expect(response.status).toBe(400);
+
+    const payload = await response.json();
+    expect(payload.error).toBe('Invalid RecommendationRequest payload.');
+    expect(payload.code).toBe('INVALID_RECOMMENDATION_REQUEST');
   });
 
   it('returns 404 for unknown target player', async () => {
@@ -51,6 +55,10 @@ describe('POST /api/recommend (seed mode)', () => {
       targetPlayerName: 'Nonexistent Player XYZ',
     });
     expect(response.status).toBe(404);
+
+    const payload = await response.json();
+    expect(payload.error).toBe('Target player not found.');
+    expect(payload.code).toBe('TARGET_PLAYER_NOT_FOUND');
   });
 
   it('returns recommendations for Mohamed Salah', async () => {
