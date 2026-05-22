@@ -47,6 +47,7 @@ Avoid:
 - Hosted Supabase-backed recommendation runs verified
 - API error responses include stable machine-readable codes while preserving `error` strings
 - Results UI includes distinct empty states and mobile-friendly recommendation cards
+- GitHub Actions CI workflow runs lint, tests, and build on pull requests and pushes to `main`
 
 ## In Progress
 
@@ -58,7 +59,7 @@ Avoid:
 - Single-provider data ingestion (API-Football or Footio)
 - Multi-provider enrichment and conflict resolution
 - Cron-based daily refresh implementation
-- Monitoring, rate limiting, CI/CD hardening
+- Monitoring, rate limiting, additional CI/CD hardening
 
 ## Blockers
 
