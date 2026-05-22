@@ -50,6 +50,9 @@ Avoid:
 - GitHub Actions CI workflow runs lint, tests, and build on pull requests and pushes to `main`
 - Supabase seed data is aligned with local seed fallback players and season stats
 - Playwright E2E coverage verifies the core search-to-recommendation browser flow
+- Structured server logs cover recommendation/search/cron events and Supabase persistence fallback
+- Public recommend/search routes have best-effort in-memory rate limits
+- Cron refresh stub requires `x-cron-secret` backed by `CRON_SHARED_SECRET`
 
 ## In Progress
 
@@ -61,7 +64,7 @@ Avoid:
 - Single-provider data ingestion (API-Football or Footio)
 - Multi-provider enrichment and conflict resolution
 - Cron-based daily refresh implementation
-- Monitoring, rate limiting, additional CI/CD hardening
+- Additional CI/CD hardening
 
 ## Blockers
 

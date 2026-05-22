@@ -1,11 +1,13 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { resetRateLimits } from '@/src/lib/rateLimit';
 import { POST } from './route';
 
 const savedEnv = {
   url: process.env.NEXT_PUBLIC_SUPABASE_URL,
   anon: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   service: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  logLevel: process.env.LOG_LEVEL,
 };
 
 const validBody = {
@@ -21,19 +23,28 @@ beforeAll(() => {
   delete process.env.NEXT_PUBLIC_SUPABASE_URL;
   delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  process.env.LOG_LEVEL = 'silent';
 });
 
 afterAll(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = savedEnv.url;
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = savedEnv.anon;
   process.env.SUPABASE_SERVICE_ROLE_KEY = savedEnv.service;
+  process.env.LOG_LEVEL = savedEnv.logLevel;
 });
 
-function postRecommend(body: unknown) {
+beforeEach(() => {
+  resetRateLimits();
+});
+
+function postRecommend(body: unknown, ip = '203.0.113.10') {
   return POST(
     new Request('http://localhost/api/recommend', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-forwarded-for': ip,
+      },
       body: JSON.stringify(body),
     }),
   );
@@ -69,5 +80,19 @@ describe('POST /api/recommend (seed mode)', () => {
     expect(payload.target.fullName).toBe('Mohamed Salah');
     expect(payload.recommendations.length).toBeGreaterThan(0);
     expect(payload.recommendations[0].score).toBeGreaterThan(0);
+  });
+
+  it('returns 429 after the per-IP recommendation limit is exceeded', async () => {
+    for (let index = 0; index < 20; index += 1) {
+      const response = await postRecommend(validBody, '203.0.113.20');
+      expect(response.status).toBe(200);
+    }
+
+    const response = await postRecommend(validBody, '203.0.113.20');
+    expect(response.status).toBe(429);
+
+    const payload = await response.json();
+    expect(payload.error).toBe('Too many recommendation requests. Please try again shortly.');
+    expect(payload.code).toBe('RATE_LIMITED');
   });
 });

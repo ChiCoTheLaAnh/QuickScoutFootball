@@ -121,7 +121,8 @@ Set these in the Vercel project (**Settings → Environment Variables**):
 | `NEXT_PUBLIC_SUPABASE_URL` | Optional | Omit for seed-only deploy |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional | Omit for seed-only deploy |
 | `SUPABASE_SERVICE_ROLE_KEY` | Optional | Server writes; falls back to anon key |
-| `CRON_SHARED_SECRET` | Future | Not used until cron ingestion is implemented |
+| `CRON_SHARED_SECRET` | Required for cron route | Send as `x-cron-secret`; cron returns `503` if unset |
+| `LOG_LEVEL` | Optional | `info` by default; supports `info`, `warn`, `error`, `silent` |
 | Provider API keys | Future | See `.env.example`; not used in MVP |
 
 ### Seed-only deploy (fastest MVP)
@@ -138,7 +139,7 @@ Set these in the Vercel project (**Settings → Environment Variables**):
 
 ### Cron note
 
-`vercel.json` schedules `GET /api/cron/refresh` daily. The route is a stub (`not_implemented`) until Phase 4 — safe to deploy, no ingestion runs yet.
+`vercel.json` schedules `GET /api/cron/refresh` daily. The route requires `x-cron-secret: <CRON_SHARED_SECRET>` and remains a stub (`not_implemented`) until Phase 4 — safe to deploy, no ingestion runs yet.
 
 ### Deploy commands
 
@@ -191,6 +192,13 @@ MVP route surface:
 - `GET /api/cron/refresh` — scheduled refresh stub (configured in `vercel.json`, inactive until Phase 4).
 
 Recommendation runs are stored in Supabase when configured; otherwise they are kept in an in-memory buffer for the current server process (seed-only local dev).
+
+## Production hardening notes
+
+- Server routes emit JSON-style logs to stdout with event name, route, status, duration, and safe metadata. Logs do not include full request payloads, recommendation responses, or secrets.
+- Public MVP routes use best-effort in-memory rate limits per IP and route: `POST /api/recommend` allows 20 requests per minute, and nonblank `GET /api/players/search` allows 60 requests per minute.
+- Rate-limit responses use the additive API error shape with `code: "RATE_LIMITED"` and status `429`.
+- Cron calls must include `x-cron-secret`; missing or invalid secrets return `CRON_UNAUTHORIZED`, and unset `CRON_SHARED_SECRET` returns `CRON_NOT_CONFIGURED`.
 
 ## Seed-data-first architecture
 

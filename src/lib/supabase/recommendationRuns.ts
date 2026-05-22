@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'crypto';
 
+import { logServerEvent } from '../logging';
 import { isSupabaseConfigured } from './client';
 import { createServerSupabaseClient } from './server';
 import type { RecommendationRequest, RecommendationResponse } from '../types';
@@ -101,6 +102,18 @@ export async function createRecommendationRun(
 
   const supabase = createServerSupabaseClient();
   if (!supabase) {
+    logServerEvent({
+      event: 'recommendation_run.persistence_fallback',
+      route: '/api/recommend',
+      status: 202,
+      durationMs,
+      level: 'warn',
+      metadata: {
+        providerSource,
+        recommendationCount: response.recommendations.length,
+        errorName: 'SupabaseClientUnavailable',
+      },
+    });
     pushMemoryRun(record);
     return record;
   }
@@ -122,6 +135,18 @@ export async function createRecommendationRun(
     .single();
 
   if (error || !data) {
+    logServerEvent({
+      event: 'recommendation_run.persistence_fallback',
+      route: '/api/recommend',
+      status: 202,
+      durationMs,
+      level: 'warn',
+      metadata: {
+        providerSource,
+        recommendationCount: response.recommendations.length,
+        errorName: error?.name ?? null,
+      },
+    });
     pushMemoryRun(record);
     return record;
   }

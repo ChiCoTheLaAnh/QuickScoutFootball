@@ -56,9 +56,9 @@ Priority order: complete **Phase 2 — MVP** items before **Phase 3 — Producti
 
 - [x] E2E tests (Playwright or Next experimental test runner)
 - [x] CI pipeline: lint + test + build on pull requests
-- [ ] Monitoring and logging (recommendation run failures, API errors)
-- [ ] Rate limiting on public API routes
-- [ ] Secure cron endpoint (`CRON_SECRET` or Vercel cron auth)
+- [x] Monitoring and logging (recommendation run failures, API errors)
+- [x] Rate limiting on public API routes
+- [x] Secure cron endpoint (`CRON_SECRET` or Vercel cron auth)
 - [ ] Performance review (search debounce, recommend payload size)
 
 ---
