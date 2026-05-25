@@ -75,10 +75,10 @@ Aligned with [README.md](README.md) provider integration plan.
 
 ## Phase 2 — Single provider sync
 
-- [ ] Choose first provider (API-Football or Footio)
-- [ ] Implement fetch + transform in `src/lib/provider/`
-- [ ] Upsert players and stats into Supabase
-- [ ] Keep API contracts unchanged for UI and `/api/recommend`
+- [x] Choose first provider (API-Football)
+- [x] Implement fetch + transform in `src/lib/provider/`
+- [x] Upsert players and stats into Supabase
+- [x] Keep API contracts unchanged for UI and `/api/recommend`
 
 ## Phase 3 — Multi-provider enrichment
 

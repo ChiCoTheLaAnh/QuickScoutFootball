@@ -88,7 +88,7 @@ Then start the app:
 npm run dev
 ```
 
-Provider ingestion, authentication, and cron refresh logic are intentionally not implemented yet.
+Provider ingestion is available as a manual service foundation for API-Football. It is not wired to cron or a public route yet. Authentication and automated refresh logic remain staged for later phases.
 
 ## Quick start for scouts
 
@@ -233,7 +233,7 @@ This project follows a **seed-data-first** approach:
 - Keep ingestion deterministic so recommendation outputs are reproducible during early testing.
 - Gradually swap seed pipelines with provider sync jobs without changing downstream API contracts.
 
-## Future provider integration plan
+## Provider integration plan
 
 Provider integrations are intentionally staged:
 
@@ -242,8 +242,11 @@ Provider integrations are intentionally staged:
    - Build ranking/recommendation logic against stable schema.
 
 2. **Phase 2 — Single provider sync**
-   - Add one external provider for player + market value updates.
-   - Map external IDs to `provider_source` + `provider_*_id` columns.
+   - First provider: API-Football.
+   - Fetch raw players through `API_FOOTBALL_PLAYERS_URL` using `API_FOOTBALL_API_KEY`.
+   - Transform raw payloads in `src/lib/provider/apiFootball.ts`.
+   - Upsert normalized players and season stats with `src/lib/supabase/providerSync.ts`.
+   - Keep `/api/recommend` and UI response shapes unchanged.
 
 3. **Phase 3 — Multi-provider enrichment**
    - Add advanced event and scouting metrics.
@@ -254,3 +257,23 @@ Provider integrations are intentionally staged:
    - Monitor run status using `recommendation_runs` + logs/alerts.
 
 This keeps MVP delivery fast while preserving a path to production-grade data operations.
+
+### API-Football field mapping
+
+The first sync path expects provider payloads that can supply:
+
+- external player ID (`player.id`)
+- normalized name (`player.name` or `firstname` + `lastname`)
+- age or birth date (`player.age` currently mapped)
+- nationality (`player.nationality`)
+- position (`statistics[0].games.position`)
+- team and league (`statistics[0].team.name`, `statistics[0].league.name`)
+- market value when a provider payload supplies it
+- season stats used by scoring: appearances, starts, minutes, goals, assists, shots, key passes, pass accuracy, tackles, interceptions, dribbles, aerial duels, cards, saves, and goals conceded
+
+Set these variables before running the manual sync service:
+
+```bash
+API_FOOTBALL_API_KEY=...
+API_FOOTBALL_PLAYERS_URL=...
+```

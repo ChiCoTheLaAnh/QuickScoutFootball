@@ -4,7 +4,7 @@
 
 **Phase 3 — Production Readiness core tasks complete; ready for Data Phase 2 planning**
 
-Data pipeline context (see [README.md](README.md)): **Phase 1 (Seed baseline)** is complete. **Phase 2 (Single provider sync)** has not started.
+Data pipeline context (see [README.md](README.md)): **Phase 1 (Seed baseline)** is complete. **Phase 2 (Single provider sync)** foundation is implemented for API-Football; hosted sync validation still requires provider credentials.
 
 ## Objective Of Current Phase
 
@@ -58,12 +58,11 @@ Avoid:
 
 ## In Progress
 
-- None
+- Hosted API-Football sync validation with real provider credentials
 
 ## Not Started (This Phase Or Later)
 
 - Authentication
-- Single-provider data ingestion (API-Football or Footio)
 - Multi-provider enrichment and conflict resolution
 - Cron-based daily refresh implementation
 - Additional CI/CD hardening
@@ -71,7 +70,7 @@ Avoid:
 ## Blockers
 
 - None critical for local MVP development
-- Provider work blocked on API keys, rate-limit strategy, and field-mapping decisions (see `.env.example`)
+- Hosted provider sync validation requires `API_FOOTBALL_API_KEY` and `API_FOOTBALL_PLAYERS_URL`
 
 ---
 
@@ -103,8 +102,8 @@ Planned focus:
 
 **Data Phase 2 — Single provider sync** (see [README.md](README.md))
 
-- Implement one external provider for player + market value updates
-- Map external IDs to `provider_source` / `provider_*_id` columns without breaking API contracts
+- Validate API-Football sync against a hosted Supabase database with real provider credentials
+- Keep the manual service path stable before wiring cron automation
 
 ---
 
