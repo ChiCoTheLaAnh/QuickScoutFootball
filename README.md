@@ -90,6 +90,17 @@ npm run dev
 
 Provider ingestion, authentication, and cron refresh logic are intentionally not implemented yet.
 
+## Quick start for scouts
+
+1. Open the app home page.
+2. Type a target player name, for example `Mohamed Salah`.
+3. Select the player from the search suggestions.
+4. Adjust role, age, market value, minutes, and recommendation mode.
+5. Click **Get Recommendations**.
+6. Review the ranked candidates, explanation text, and score breakdown.
+
+The MVP is designed for replacement scouting: start with one target player, tune constraints, and compare the ranked alternatives.
+
 ## Verify locally
 
 ```bash
@@ -102,6 +113,18 @@ Optional production-mode smoke test (starts `next start` on port 3000):
 
 ```bash
 npm run smoke:local
+```
+
+Optional endpoint performance review against a running app:
+
+```bash
+npm run perf:review
+```
+
+Use `BASE_URL` and `PERF_LABEL` to compare seed and Supabase-backed deployments:
+
+```bash
+PERF_LABEL=supabase BASE_URL=https://your-app.vercel.app npm run perf:review
 ```
 
 ## Deploy to Vercel
@@ -196,6 +219,7 @@ Recommendation runs are stored in Supabase when configured; otherwise they are k
 ## Production hardening notes
 
 - Server routes emit JSON-style logs to stdout with event name, route, status, duration, and safe metadata. Logs do not include full request payloads, recommendation responses, or secrets.
+- Search and recommendation success logs include performance metadata such as result counts, candidate counts, and response payload size.
 - Public MVP routes use best-effort in-memory rate limits per IP and route: `POST /api/recommend` allows 20 requests per minute, and nonblank `GET /api/players/search` allows 60 requests per minute.
 - Rate-limit responses use the additive API error shape with `code: "RATE_LIMITED"` and status `429`.
 - Cron calls must include `x-cron-secret`; missing or invalid secrets return `CRON_UNAUTHORIZED`, and unset `CRON_SHARED_SECRET` returns `CRON_NOT_CONFIGURED`.

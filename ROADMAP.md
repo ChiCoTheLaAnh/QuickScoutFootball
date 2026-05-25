@@ -39,7 +39,7 @@ Priority order: complete **Phase 2 — MVP** items before **Phase 3 — Producti
 ## Low Priority
 
 - [x] UI polish (empty states, table responsiveness)
-- [ ] README diagram or quick-start for scouts (non-technical users)
+- [x] README diagram or quick-start for scouts (non-technical users)
 
 ## Explicitly Out Of Scope (Phase 2)
 
@@ -59,7 +59,7 @@ Priority order: complete **Phase 2 — MVP** items before **Phase 3 — Producti
 - [x] Monitoring and logging (recommendation run failures, API errors)
 - [x] Rate limiting on public API routes
 - [x] Secure cron endpoint (`CRON_SECRET` or Vercel cron auth)
-- [ ] Performance review (search debounce, recommend payload size)
+- [x] Performance review (search debounce, recommend payload size)
 
 ---
 

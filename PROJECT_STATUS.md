@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-**Phase 2 — MVP Development complete; ready for Phase 3 — Production Readiness**
+**Phase 3 — Production Readiness core tasks complete; ready for Data Phase 2 planning**
 
 Data pipeline context (see [README.md](README.md)): **Phase 1 (Seed baseline)** is complete. **Phase 2 (Single provider sync)** has not started.
 
@@ -53,6 +53,8 @@ Avoid:
 - Structured server logs cover recommendation/search/cron events and Supabase persistence fallback
 - Public recommend/search routes have best-effort in-memory rate limits
 - Cron refresh stub requires `x-cron-secret` backed by `CRON_SHARED_SECRET`
+- Search/recommendation routes include performance metadata, and `npm run perf:review` measures endpoint latency and payload size
+- README includes a quick start for scouts
 
 ## In Progress
 

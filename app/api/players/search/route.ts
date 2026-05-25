@@ -45,6 +45,19 @@ export async function GET(req: Request) {
       position: player.position,
       nationality: player.nationality,
     }));
+    const responsePayloadBytes = Buffer.byteLength(JSON.stringify({ results }), 'utf8');
+
+    logServerEvent({
+      event: 'players.search.completed',
+      route: '/api/players/search',
+      status: 200,
+      durationMs: Date.now() - startedAt,
+      metadata: {
+        queryLength: q.trim().length,
+        resultCount: results.length,
+        responsePayloadBytes,
+      },
+    });
 
     return NextResponse.json({ results });
   } catch (error) {

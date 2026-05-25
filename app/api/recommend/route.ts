@@ -91,6 +91,7 @@ export async function POST(req: Request) {
       .slice(0, 10);
 
     const response: RecommendationResponse = { target, recommendations };
+    const responsePayloadBytes = Buffer.byteLength(JSON.stringify(response), 'utf8');
 
     void createRecommendationRun(json, response, startedAt).catch(() => undefined);
 
@@ -103,6 +104,8 @@ export async function POST(req: Request) {
         mode: json.mode,
         recommendationCount: recommendations.length,
         candidateCount: filteredCandidates.length,
+        playerCount: players.length,
+        responsePayloadBytes,
       },
     });
 
