@@ -3,3 +3,4 @@ node_modules/
 .vercel
 playwright-report/
 test-results/
+.tmp/

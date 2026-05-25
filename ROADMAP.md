@@ -78,7 +78,9 @@ Aligned with [README.md](README.md) provider integration plan.
 - [x] Choose first provider (API-Football)
 - [x] Implement fetch + transform in `src/lib/provider/`
 - [x] Upsert players and stats into Supabase
+- [x] Add manual API-Football sync command
 - [x] Keep API contracts unchanged for UI and `/api/recommend`
+- [ ] Validate API-Football sync against hosted Supabase with real credentials
 
 ## Phase 3 — Multi-provider enrichment
 

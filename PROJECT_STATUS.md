@@ -42,7 +42,9 @@ Avoid:
 - ESLint (flat config), Vitest unit tests, and route integration tests (seed mode)
 - Deployment docs, smoke scripts (`npm run smoke`, `npm run smoke:local`, `npm run smoke:supabase`)
 - `npm run lint`, `npm run build`, and `npm test` passing
-- Provider module stubs (`apiFootball`, `footio`) and cron route stub (`/api/cron/refresh`)
+- API-Football provider fetch, transform, and Supabase upsert foundation; Footio remains a later candidate stub
+- Manual API-Football sync command (`npm run sync:api-football`)
+- Cron route stub (`/api/cron/refresh`)
 - Documentation: [README.md](README.md), [AGENTS.md](AGENTS.md)
 - Hosted Supabase-backed recommendation runs verified
 - API error responses include stable machine-readable codes while preserving `error` strings

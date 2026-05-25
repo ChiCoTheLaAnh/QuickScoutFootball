@@ -143,10 +143,11 @@ Set these in the Vercel project (**Settings → Environment Variables**):
 | `NEXT_PUBLIC_APP_URL` | Recommended | Production URL, e.g. `https://your-app.vercel.app` |
 | `NEXT_PUBLIC_SUPABASE_URL` | Optional | Omit for seed-only deploy |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional | Omit for seed-only deploy |
-| `SUPABASE_SERVICE_ROLE_KEY` | Optional | Server writes; falls back to anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Optional for app, required for provider sync | Server writes; app reads fall back to anon key |
 | `CRON_SHARED_SECRET` | Required for cron route | Send as `x-cron-secret`; cron returns `503` if unset |
 | `LOG_LEVEL` | Optional | `info` by default; supports `info`, `warn`, `error`, `silent` |
-| Provider API keys | Future | See `.env.example`; not used in MVP |
+| `API_FOOTBALL_API_KEY` | Required for manual provider sync | Sent as `x-apisports-key` |
+| `API_FOOTBALL_PLAYERS_URL` | Required for manual provider sync | Full API-Football players endpoint URL to fetch |
 
 ### Seed-only deploy (fastest MVP)
 
@@ -201,6 +202,28 @@ BASE_URL=https://your-app.vercel.app npm run smoke:supabase
 
 (`smoke:supabase` requires Supabase env vars on the target deployment.)
 
+## Manual API-Football sync
+
+API-Football sync is available as an operator-run command. It is not wired to cron or any public API route.
+
+Set Supabase write credentials and API-Football credentials:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+API_FOOTBALL_API_KEY=your-api-football-key
+API_FOOTBALL_PLAYERS_URL=https://your-api-football-players-endpoint
+```
+
+Run the sync:
+
+```bash
+npm run sync:api-football
+```
+
+The command prints a JSON summary with `fetched`, `transformed`, `playersUpserted`, `statsUpserted`, and `skipped`. It does not print API keys, raw provider payloads, or full player records.
+
 ## API routes
 
 MVP route surface:
@@ -246,6 +269,7 @@ Provider integrations are intentionally staged:
    - Fetch raw players through `API_FOOTBALL_PLAYERS_URL` using `API_FOOTBALL_API_KEY`.
    - Transform raw payloads in `src/lib/provider/apiFootball.ts`.
    - Upsert normalized players and season stats with `src/lib/supabase/providerSync.ts`.
+   - Run manually with `npm run sync:api-football`.
    - Keep `/api/recommend` and UI response shapes unchanged.
 
 3. **Phase 3 — Multi-provider enrichment**
