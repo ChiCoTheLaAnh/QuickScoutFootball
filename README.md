@@ -203,6 +203,8 @@ BASE_URL=https://your-app.vercel.app CRON_SECRET=... npm run smoke:cron
 
 Set `SMOKE_CRON_HEALTH_EXPECT_HEALTHY=1` when the deploy should already have a fresh successful cron run recorded.
 
+You can also run the same checks from GitHub Actions with **Production Smoke** (`workflow_dispatch`). Configure the repository secret `CRON_SECRET`, then provide the deployed `base_url`. Enable `expect_healthy_cron` only after the scheduled cron should have run successfully.
+
 ### Hosted Supabase verification (optional)
 
 After a Supabase-backed deploy:
@@ -266,6 +268,42 @@ Recommendation runs are stored in Supabase when configured; otherwise they are k
 - Cron calls must include `Authorization: Bearer <CRON_SECRET>`; missing or invalid secrets return `CRON_UNAUTHORIZED`, unset `CRON_SECRET` returns `CRON_NOT_CONFIGURED`, and sync failures return `CRON_REFRESH_FAILED`.
 - Cron refresh success and failure logs include refresh-health metadata (`refreshStatus`, `isStale`, `needsAttention`, timestamps, and stale threshold). Failed syncs also emit `cron.refresh.alert`.
 - Cron health is intentionally lightweight. It reads Supabase freshness when available and keeps latest failure metadata in-process; use Vercel cron execution history and structured logs as the durable source for failed-run details. Use `npm run smoke:cron` to confirm the deployed health route is reachable and correctly authorized.
+
+## Cron operations runbook
+
+Use this after each production deploy with Supabase, API-Football, and `CRON_SECRET` configured.
+
+1. Confirm the deploy is reachable:
+
+   ```bash
+   BASE_URL=https://your-app.vercel.app npm run smoke
+   ```
+
+2. Confirm cron health authorization and response shape:
+
+   ```bash
+   BASE_URL=https://your-app.vercel.app CRON_SECRET=... npm run smoke:cron
+   ```
+
+3. After the scheduled `05:00 UTC` cron window, confirm Vercel cron history shows `GET /api/cron/refresh` ran. Then require healthy data:
+
+   ```bash
+   SMOKE_CRON_HEALTH_EXPECT_HEALTHY=1 BASE_URL=https://your-app.vercel.app CRON_SECRET=... npm run smoke:cron
+   ```
+
+4. Check structured logs:
+   - Success: `cron.refresh.completed` with `refreshStatus: "healthy"` and provider counts.
+   - Failure: `cron.refresh.failed` plus `cron.refresh.alert`.
+   - Health check: `cron.health.completed` or `cron.health.attention_required`.
+
+5. Triage failures:
+   - `CRON_NOT_CONFIGURED`: set `CRON_SECRET` on the deployment.
+   - `CRON_UNAUTHORIZED`: align Vercel cron authorization and the deployment `CRON_SECRET`.
+   - `CRON_REFRESH_FAILED`: verify `API_FOOTBALL_API_KEY`, `API_FOOTBALL_PLAYERS_URL`, Supabase service-role credentials, and provider quota.
+   - `status: "unknown"`: no successful refresh is visible yet; wait for the first scheduled run or run the refresh manually with valid cron auth.
+   - `status: "stale"`: the last Supabase API-Football player update is older than `REFRESH_STALE_AFTER_HOURS`; inspect cron history and provider sync logs.
+
+The GitHub Actions **Production Smoke** workflow runs the same smoke script manually against a supplied `base_url`. It is intentionally not part of pull-request CI because it depends on deployed infrastructure and the `CRON_SECRET` repository secret.
 
 ## Seed-data-first architecture
 

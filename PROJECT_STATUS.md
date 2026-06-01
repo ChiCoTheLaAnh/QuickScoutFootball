@@ -50,6 +50,7 @@ Avoid:
 - API error responses include stable machine-readable codes while preserving `error` strings
 - Results UI includes distinct empty states and mobile-friendly recommendation cards
 - GitHub Actions CI workflow runs lint, tests, and build on pull requests and pushes to `main`
+- Manual GitHub Actions production smoke workflow validates deployed core flow and optional cron health
 - Supabase seed data is aligned with local seed fallback players and season stats
 - Playwright E2E coverage verifies the core search-to-recommendation browser flow
 - Structured server logs cover recommendation/search/cron events and Supabase persistence fallback
@@ -63,13 +64,13 @@ Avoid:
 
 ## In Progress
 
-- None
+- Scheduled production cron validation after the next deploy
 
 ## Not Started (This Phase Or Later)
 
 - Authentication
 - Multi-provider enrichment and conflict resolution
-- Additional CI/CD hardening
+- Additional CI/CD hardening after production smoke observations
 
 ## Blockers
 

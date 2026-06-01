@@ -1,0 +1,54 @@
+name: Production Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Production or preview URL to smoke-test
+        required: true
+        type: string
+      check_supabase_runs:
+        description: Check Supabase recommendation-run persistence
+        required: true
+        default: false
+        type: boolean
+      check_cron_health:
+        description: Check authenticated cron health endpoint
+        required: true
+        default: true
+        type: boolean
+      expect_healthy_cron:
+        description: Fail if cron health reports attention needed
+        required: true
+        default: false
+        type: boolean
+
+env:
+  CI: true
+
+jobs:
+  smoke:
+    name: Post-deploy smoke
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: ${{ inputs.base_url }}
+      SMOKE_SUPABASE: ${{ inputs.check_supabase_runs && '1' || '0' }}
+      SMOKE_CRON_HEALTH: ${{ inputs.check_cron_health && '1' || '0' }}
+      SMOKE_CRON_HEALTH_EXPECT_HEALTHY: ${{ inputs.expect_healthy_cron && '1' || '0' }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run smoke checks
+        run: node scripts/smoke-test.mjs
