@@ -29,6 +29,36 @@ type PlayerUpsertResponse = {
   provider_player_id: string;
 };
 
+type ProviderStatsUpsertRow = {
+  player_id: string;
+  provider_source: string;
+  provider_stat_id: string;
+  season: string;
+  competition?: string;
+  competition_provider_id: string;
+  appearances: number;
+  starts: number;
+  minutes: number;
+  goals: number;
+  assists: number;
+  expected_goals?: number;
+  expected_assists?: number;
+  shots: number;
+  shots_on_target: number;
+  key_passes: number;
+  pass_accuracy?: number;
+  dribbles_completed: number;
+  tackles: number;
+  interceptions: number;
+  aerial_duels_won: number;
+  yellow_cards: number;
+  red_cards: number;
+  clean_sheets?: number;
+  goals_conceded?: number;
+  saves?: number;
+  metadata?: Record<string, unknown>;
+};
+
 export async function upsertProviderPlayers(records: ProviderPlayerRecord[]): Promise<ProviderUpsertResult> {
   if (records.length === 0) {
     return { playersUpserted: 0, statsUpserted: 0 };
@@ -107,7 +137,7 @@ function toStatsRow(
   providerSource: string,
   stats: ProviderSeasonStats,
   metadata?: Record<string, unknown>,
-): Record<string, unknown> {
+): ProviderStatsUpsertRow {
   return {
     player_id: playerId,
     provider_source: providerSource,
@@ -117,23 +147,23 @@ function toStatsRow(
     season: stats.season ?? 'unknown',
     competition: stats.competition,
     competition_provider_id: stats.competitionProviderId ?? 'unknown',
-    appearances: stats.appearances,
-    starts: stats.starts,
-    minutes: stats.minutes,
-    goals: stats.goals,
-    assists: stats.assists,
+    appearances: stats.appearances ?? 0,
+    starts: stats.starts ?? 0,
+    minutes: stats.minutes ?? 0,
+    goals: stats.goals ?? 0,
+    assists: stats.assists ?? 0,
     expected_goals: stats.expectedGoals,
     expected_assists: stats.expectedAssists,
-    shots: stats.shots,
-    shots_on_target: stats.shotsOnTarget,
-    key_passes: stats.keyPasses,
+    shots: stats.shots ?? 0,
+    shots_on_target: stats.shotsOnTarget ?? 0,
+    key_passes: stats.keyPasses ?? 0,
     pass_accuracy: stats.passAccuracy,
-    dribbles_completed: stats.dribblesCompleted,
-    tackles: stats.tackles,
-    interceptions: stats.interceptions,
-    aerial_duels_won: stats.aerialDuelsWon,
-    yellow_cards: stats.yellowCards,
-    red_cards: stats.redCards,
+    dribbles_completed: stats.dribblesCompleted ?? 0,
+    tackles: stats.tackles ?? 0,
+    interceptions: stats.interceptions ?? 0,
+    aerial_duels_won: stats.aerialDuelsWon ?? 0,
+    yellow_cards: stats.yellowCards ?? 0,
+    red_cards: stats.redCards ?? 0,
     clean_sheets: stats.cleanSheets,
     goals_conceded: stats.goalsConceded,
     saves: stats.saves,
