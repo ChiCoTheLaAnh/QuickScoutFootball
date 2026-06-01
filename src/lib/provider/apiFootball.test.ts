@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ProviderPlayerRaw } from '../types';
-import { transformApiFootballPlayer, transformApiFootballPlayerRecord } from './apiFootball';
+import {
+  fetchApiFootballPlayers,
+  transformApiFootballPlayer,
+  transformApiFootballPlayerRecord,
+} from './apiFootball';
 
 const sampleRaw: ProviderPlayerRaw = {
   provider: 'apiFootball',
@@ -93,5 +97,83 @@ describe('API-Football provider transform', () => {
       sourceId: 'missing-name',
       payload: { player: { id: 'missing-name' } },
     })).toBeNull();
+  });
+});
+
+describe('fetchApiFootballPlayers', () => {
+  const savedEnv = {
+    apiKey: process.env.API_FOOTBALL_API_KEY,
+    playersUrl: process.env.API_FOOTBALL_PLAYERS_URL,
+  };
+
+  beforeEach(() => {
+    process.env.API_FOOTBALL_API_KEY = 'test-api-key';
+    process.env.API_FOOTBALL_PLAYERS_URL = 'https://v3.football.api-sports.io/players?league=39&season=2025';
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+
+    if (savedEnv.apiKey === undefined) {
+      delete process.env.API_FOOTBALL_API_KEY;
+    } else {
+      process.env.API_FOOTBALL_API_KEY = savedEnv.apiKey;
+    }
+
+    if (savedEnv.playersUrl === undefined) {
+      delete process.env.API_FOOTBALL_PLAYERS_URL;
+    } else {
+      process.env.API_FOOTBALL_PLAYERS_URL = savedEnv.playersUrl;
+    }
+  });
+
+  it('extracts player rows from an API-Football response payload', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        errors: [],
+        response: [sampleRaw.payload],
+      }),
+    }));
+
+    await expect(fetchApiFootballPlayers()).resolves.toEqual([
+      {
+        provider: 'apiFootball',
+        sourceId: '306',
+        payload: sampleRaw.payload,
+      },
+    ]);
+  });
+
+  it('fails when API-Football returns structured provider errors', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        errors: {
+          requests: 'You have reached the daily request limit.',
+        },
+        response: [],
+      }),
+    }));
+
+    await expect(fetchApiFootballPlayers()).rejects.toThrow(
+      'API-Football returned errors: requests: You have reached the daily request limit.',
+    );
+  });
+
+  it('fails when API-Football returns a successful but empty player response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        errors: [],
+        results: 0,
+        paging: { current: 1, total: 1 },
+        response: [],
+      }),
+    }));
+
+    await expect(fetchApiFootballPlayers()).rejects.toThrow(
+      'API-Football response did not include player rows (results=0, paging.current=1, paging.total=1).',
+    );
   });
 });

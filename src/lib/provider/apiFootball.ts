@@ -35,7 +35,12 @@ export async function fetchApiFootballPlayers(): Promise<ProviderPlayerRaw[]> {
   }
 
   const payload: unknown = await response.json();
+  assertNoProviderErrors(payload);
+
   const rows = extractRows(payload);
+  if (rows.length === 0) {
+    throw new Error(buildEmptyResponseMessage(payload));
+  }
 
   return rows
     .map((row) => {
@@ -119,6 +124,78 @@ function extractRows(payload: unknown): unknown[] {
   if (Array.isArray(record.results)) return record.results;
   if (Array.isArray(record.players)) return record.players;
   return [];
+}
+
+function assertNoProviderErrors(payload: unknown): void {
+  const record = toRecord(payload);
+  if (!record) return;
+
+  const errorSummary = summarizeProviderErrors(record.errors);
+  if (!errorSummary) return;
+
+  throw new Error(`API-Football returned errors: ${errorSummary}`);
+}
+
+function summarizeProviderErrors(errors: unknown): string | undefined {
+  if (errors === null || errors === undefined) return undefined;
+
+  if (Array.isArray(errors)) {
+    const messages = errors
+      .map(summarizeProviderValue)
+      .filter((message): message is string => Boolean(message));
+    return messages.length > 0 ? messages.join('; ') : undefined;
+  }
+
+  const record = toRecord(errors);
+  if (record) {
+    const entries = Object.entries(record)
+      .map(([key, value]) => {
+        const message = summarizeProviderValue(value);
+        return message ? `${key}: ${message}` : key;
+      });
+    return entries.length > 0 ? entries.join('; ') : undefined;
+  }
+
+  return summarizeProviderValue(errors);
+}
+
+function summarizeProviderValue(value: unknown): string | undefined {
+  if (typeof value === 'string') return value.trim() || undefined;
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  if (typeof value === 'boolean') return String(value);
+
+  const record = toRecord(value);
+  if (record) {
+    const entries = Object.entries(record)
+      .map(([key, nested]) => {
+        const message = summarizeProviderValue(nested);
+        return message ? `${key}: ${message}` : key;
+      });
+    return entries.length > 0 ? entries.join(', ') : undefined;
+  }
+
+  return undefined;
+}
+
+function buildEmptyResponseMessage(payload: unknown): string {
+  const record = toRecord(payload);
+  const details: string[] = [];
+
+  const results = toOptionalNumber(record?.results);
+  if (results !== undefined) {
+    details.push(`results=${results}`);
+  }
+
+  const paging = toRecord(record?.paging);
+  const currentPage = toOptionalNumber(paging?.current);
+  const totalPages = toOptionalNumber(paging?.total);
+  if (currentPage !== undefined || totalPages !== undefined) {
+    details.push(`paging.current=${currentPage ?? 'unknown'}`);
+    details.push(`paging.total=${totalPages ?? 'unknown'}`);
+  }
+
+  const suffix = details.length > 0 ? ` (${details.join(', ')})` : '';
+  return `API-Football response did not include player rows${suffix}. Check API_FOOTBALL_PLAYERS_URL query parameters such as league, season, team, search, and page.`;
 }
 
 function extractSourceId(row: unknown): string | undefined {
