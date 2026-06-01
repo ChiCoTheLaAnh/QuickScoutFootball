@@ -2,9 +2,9 @@
 
 ## Current Phase
 
-**Phase 3 — Production Readiness core tasks complete; ready for Data Phase 2 planning**
+**Phase 3 — Production Readiness core tasks complete; Data Phase 2 validated; ready for Phase 4 automated refresh planning**
 
-Data pipeline context (see [README.md](README.md)): **Phase 1 (Seed baseline)** is complete. **Phase 2 (Single provider sync)** foundation is implemented for API-Football; hosted sync validation still requires provider credentials.
+Data pipeline context (see [README.md](README.md)): **Phase 1 (Seed baseline)** is complete. **Phase 2 (Single provider sync)** is validated for API-Football against hosted Supabase.
 
 ## Objective Of Current Phase
 
@@ -57,10 +57,11 @@ Avoid:
 - Cron refresh stub requires `x-cron-secret` backed by `CRON_SHARED_SECRET`
 - Search/recommendation routes include performance metadata, and `npm run perf:review` measures endpoint latency and payload size
 - README includes a quick start for scouts
+- Hosted API-Football sync validated against Supabase (`fetched: 20`, `transformed: 20`, `playersUpserted: 20`, `statsUpserted: 20`, `skipped: 0`)
 
 ## In Progress
 
-- Hosted API-Football sync validation with real provider credentials
+- None
 
 ## Not Started (This Phase Or Later)
 
@@ -72,7 +73,7 @@ Avoid:
 ## Blockers
 
 - None critical for local MVP development
-- Hosted provider sync validation requires `API_FOOTBALL_API_KEY` and `API_FOOTBALL_PLAYERS_URL`
+- None for Data Phase 2 validation
 
 ---
 
@@ -102,10 +103,10 @@ Planned focus:
 - Security (auth, cron secret, rate limits)
 - CI/CD pipeline (lint, test, build on PR)
 
-**Data Phase 2 — Single provider sync** (see [README.md](README.md))
+**Data Phase 4 — Automated refresh** (see [README.md](README.md))
 
-- Validate API-Football sync against a hosted Supabase database with real provider credentials
-- Keep the manual service path stable before wiring cron automation
+- Implement `GET /api/cron/refresh` ingestion job using the validated manual API-Football sync path
+- Wire Vercel cron with monitoring/alerts for failed ingestion or stale data
 
 ---
 
