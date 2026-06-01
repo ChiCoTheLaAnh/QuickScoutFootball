@@ -88,7 +88,7 @@ Then start the app:
 npm run dev
 ```
 
-Provider ingestion is available as a manual service foundation for API-Football. It is not wired to cron or a public route yet. Authentication and automated refresh logic remain staged for later phases.
+Provider ingestion is available through the manual API-Football sync command and the scheduled cron refresh route. Authentication and multi-provider enrichment remain staged for later phases.
 
 ## Quick start for scouts
 
@@ -144,7 +144,7 @@ Set these in the Vercel project (**Settings → Environment Variables**):
 | `NEXT_PUBLIC_SUPABASE_URL` | Optional | Omit for seed-only deploy |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional | Omit for seed-only deploy |
 | `SUPABASE_SERVICE_ROLE_KEY` | Optional for app, required for provider sync | Server writes; app reads fall back to anon key |
-| `CRON_SHARED_SECRET` | Required for cron route | Send as `x-cron-secret`; cron returns `503` if unset |
+| `CRON_SECRET` | Required for cron route | Vercel sends this as `Authorization: Bearer <CRON_SECRET>`; cron returns `503` if unset |
 | `LOG_LEVEL` | Optional | `info` by default; supports `info`, `warn`, `error`, `silent` |
 | `API_FOOTBALL_API_KEY` | Required for manual provider sync | Sent as `x-apisports-key` |
 | `API_FOOTBALL_PLAYERS_URL` | Required for manual provider sync | Full API-Football players endpoint URL to fetch |
@@ -163,7 +163,7 @@ Set these in the Vercel project (**Settings → Environment Variables**):
 
 ### Cron note
 
-`vercel.json` schedules `GET /api/cron/refresh` daily. The route requires `x-cron-secret: <CRON_SHARED_SECRET>` and remains a stub (`not_implemented`) until Phase 4 — safe to deploy, no ingestion runs yet.
+`vercel.json` schedules `GET /api/cron/refresh` daily at `05:00 UTC`. The route requires `Authorization: Bearer <CRON_SECRET>` and runs the validated API-Football sync path.
 
 ### Deploy commands
 
@@ -204,7 +204,7 @@ BASE_URL=https://your-app.vercel.app npm run smoke:supabase
 
 ## Manual API-Football sync
 
-API-Football sync is available as an operator-run command. It is not wired to cron or any public API route.
+API-Football sync is available as an operator-run command. The same service path is used by the scheduled cron refresh route.
 
 Set Supabase write credentials and API-Football credentials:
 
@@ -235,7 +235,7 @@ MVP route surface:
 - `GET /api/recommendations` — fetch the latest completed recommendation output.
 - `GET /api/recommendation-runs` — list recent run metadata (newest first, limit 20).
 - `GET /api/recommendation-runs/[runKey]` — fetch one run including stored response payload.
-- `GET /api/cron/refresh` — scheduled refresh stub (configured in `vercel.json`, inactive until Phase 4).
+- `GET /api/cron/refresh` — scheduled API-Football refresh route (configured in `vercel.json`; requires cron authorization).
 
 Recommendation runs are stored in Supabase when configured; otherwise they are kept in an in-memory buffer for the current server process (seed-only local dev).
 
@@ -245,7 +245,7 @@ Recommendation runs are stored in Supabase when configured; otherwise they are k
 - Search and recommendation success logs include performance metadata such as result counts, candidate counts, and response payload size.
 - Public MVP routes use best-effort in-memory rate limits per IP and route: `POST /api/recommend` allows 20 requests per minute, and nonblank `GET /api/players/search` allows 60 requests per minute.
 - Rate-limit responses use the additive API error shape with `code: "RATE_LIMITED"` and status `429`.
-- Cron calls must include `x-cron-secret`; missing or invalid secrets return `CRON_UNAUTHORIZED`, and unset `CRON_SHARED_SECRET` returns `CRON_NOT_CONFIGURED`.
+- Cron calls must include `Authorization: Bearer <CRON_SECRET>`; missing or invalid secrets return `CRON_UNAUTHORIZED`, unset `CRON_SECRET` returns `CRON_NOT_CONFIGURED`, and sync failures return `CRON_REFRESH_FAILED`.
 
 ## Seed-data-first architecture
 
@@ -278,7 +278,7 @@ Provider integrations are intentionally staged:
 
 4. **Phase 4 — Fully automated refresh**
    - Run daily ingestion via cron (`/api/cron/refresh`).
-   - Monitor run status using `recommendation_runs` + logs/alerts.
+   - Monitor refresh results using structured logs and Vercel cron failure visibility.
 
 This keeps MVP delivery fast while preserving a path to production-grade data operations.
 

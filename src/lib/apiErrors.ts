@@ -6,7 +6,8 @@ export type ApiErrorCode =
   | 'PLAYER_SEARCH_FAILED'
   | 'RATE_LIMITED'
   | 'CRON_UNAUTHORIZED'
-  | 'CRON_NOT_CONFIGURED';
+  | 'CRON_NOT_CONFIGURED'
+  | 'CRON_REFRESH_FAILED';
 
 export type ApiErrorResponse = {
   error: string;

@@ -1,9 +1,16 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { syncApiFootballPlayers } from '@/src/lib/provider/apiFootballSync';
 import { GET } from './route';
 
+vi.mock('@/src/lib/provider/apiFootballSync', () => ({
+  syncApiFootballPlayers: vi.fn(),
+}));
+
+const mockedSyncApiFootballPlayers = vi.mocked(syncApiFootballPlayers);
+
 const savedEnv = {
-  cronSecret: process.env.CRON_SHARED_SECRET,
+  cronSecret: process.env.CRON_SECRET,
   logLevel: process.env.LOG_LEVEL,
 };
 
@@ -15,50 +22,92 @@ function restoreEnvValue(key: string, value: string | undefined): void {
   process.env[key] = value;
 }
 
-beforeAll(() => {
+beforeEach(() => {
+  vi.resetAllMocks();
   process.env.LOG_LEVEL = 'silent';
 });
 
-afterAll(() => {
-  restoreEnvValue('CRON_SHARED_SECRET', savedEnv.cronSecret);
+afterEach(() => {
+  restoreEnvValue('CRON_SECRET', savedEnv.cronSecret);
   restoreEnvValue('LOG_LEVEL', savedEnv.logLevel);
 });
 
 describe('GET /api/cron/refresh', () => {
   it('returns 503 when the cron secret is not configured', async () => {
-    delete process.env.CRON_SHARED_SECRET;
+    delete process.env.CRON_SECRET;
 
     const response = await GET(new Request('http://localhost/api/cron/refresh'));
     expect(response.status).toBe(503);
 
     const payload = await response.json();
-    expect(payload.error).toBe('Cron shared secret is not configured.');
+    expect(payload.error).toBe('Cron secret is not configured.');
     expect(payload.code).toBe('CRON_NOT_CONFIGURED');
+    expect(mockedSyncApiFootballPlayers).not.toHaveBeenCalled();
   });
 
-  it('returns 401 without a matching cron secret header', async () => {
-    process.env.CRON_SHARED_SECRET = 'test-cron-secret';
+  it('returns 401 without a matching authorization header', async () => {
+    process.env.CRON_SECRET = 'test-cron-secret';
 
     const response = await GET(new Request('http://localhost/api/cron/refresh', {
-      headers: { 'x-cron-secret': 'wrong-secret' },
+      headers: { authorization: 'Bearer wrong-secret' },
     }));
     expect(response.status).toBe(401);
 
     const payload = await response.json();
     expect(payload.error).toBe('Unauthorized cron request.');
     expect(payload.code).toBe('CRON_UNAUTHORIZED');
+    expect(mockedSyncApiFootballPlayers).not.toHaveBeenCalled();
   });
 
-  it('keeps the not implemented response when cron auth passes', async () => {
-    process.env.CRON_SHARED_SECRET = 'test-cron-secret';
+  it('runs API-Football sync when cron auth passes', async () => {
+    process.env.CRON_SECRET = 'test-cron-secret';
+    mockedSyncApiFootballPlayers.mockResolvedValue({
+      providerSource: 'apiFootball',
+      fetched: 20,
+      transformed: 20,
+      playersUpserted: 20,
+      statsUpserted: 20,
+      skipped: 0,
+    });
 
     const response = await GET(new Request('http://localhost/api/cron/refresh', {
-      headers: { 'x-cron-secret': 'test-cron-secret' },
+      headers: { authorization: 'Bearer test-cron-secret' },
     }));
     expect(response.status).toBe(200);
 
     const payload = await response.json();
-    expect(payload.status).toBe('not_implemented');
-    expect(payload.message).toBe('Daily provider refresh will be implemented in a later task.');
+    expect(payload).toEqual({
+      status: 'completed',
+      summary: {
+        providerSource: 'apiFootball',
+        fetched: 20,
+        transformed: 20,
+        playersUpserted: 20,
+        statsUpserted: 20,
+        skipped: 0,
+      },
+    });
+    expect(mockedSyncApiFootballPlayers).toHaveBeenCalledOnce();
+  });
+
+  it('returns a coded 500 response when API-Football sync fails', async () => {
+    process.env.CRON_SECRET = 'test-cron-secret';
+    mockedSyncApiFootballPlayers.mockRejectedValue(new Error('provider unavailable'));
+
+    const response = await GET(new Request('http://localhost/api/cron/refresh', {
+      headers: { authorization: 'Bearer test-cron-secret' },
+    }));
+    expect(response.status).toBe(500);
+
+    const payload = await response.json();
+    expect(payload).toEqual({
+      error: 'Cron refresh failed.',
+      code: 'CRON_REFRESH_FAILED',
+      details: {
+        errorName: 'Error',
+        errorMessage: 'provider unavailable',
+      },
+    });
+    expect(mockedSyncApiFootballPlayers).toHaveBeenCalledOnce();
   });
 });

@@ -89,8 +89,8 @@ Aligned with [README.md](README.md) provider integration plan.
 
 ## Phase 4 — Automated refresh
 
-- [ ] Implement `GET /api/cron/refresh` ingestion job
-- [ ] Wire Vercel cron (`vercel.json`) with monitoring
+- [x] Implement `GET /api/cron/refresh` ingestion job
+- [x] Wire Vercel cron (`vercel.json`) with monitoring
 - [ ] Alert on failed ingestion / stale data
 
 ---

@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-**Phase 3 — Production Readiness core tasks complete; Data Phase 2 validated; ready for Phase 4 automated refresh planning**
+**Phase 3 — Production Readiness core tasks complete; Data Phase 2 validated; Phase 4 automated refresh core implemented**
 
 Data pipeline context (see [README.md](README.md)): **Phase 1 (Seed baseline)** is complete. **Phase 2 (Single provider sync)** is validated for API-Football against hosted Supabase.
 
@@ -44,7 +44,7 @@ Avoid:
 - `npm run lint`, `npm run build`, and `npm test` passing
 - API-Football provider fetch, transform, and Supabase upsert foundation; Footio remains a later candidate stub
 - Manual API-Football sync command (`npm run sync:api-football`)
-- Cron route stub (`/api/cron/refresh`)
+- Cron-based API-Football refresh route (`/api/cron/refresh`)
 - Documentation: [README.md](README.md), [AGENTS.md](AGENTS.md)
 - Hosted Supabase-backed recommendation runs verified
 - API error responses include stable machine-readable codes while preserving `error` strings
@@ -54,10 +54,11 @@ Avoid:
 - Playwright E2E coverage verifies the core search-to-recommendation browser flow
 - Structured server logs cover recommendation/search/cron events and Supabase persistence fallback
 - Public recommend/search routes have best-effort in-memory rate limits
-- Cron refresh stub requires `x-cron-secret` backed by `CRON_SHARED_SECRET`
+- Cron refresh uses Vercel-style `Authorization: Bearer <CRON_SECRET>` auth
 - Search/recommendation routes include performance metadata, and `npm run perf:review` measures endpoint latency and payload size
 - README includes a quick start for scouts
 - Hosted API-Football sync validated against Supabase (`fetched: 20`, `transformed: 20`, `playersUpserted: 20`, `statsUpserted: 20`, `skipped: 0`)
+- Automated API-Football cron refresh calls the validated sync path and logs refresh summaries/failures
 
 ## In Progress
 
@@ -67,7 +68,7 @@ Avoid:
 
 - Authentication
 - Multi-provider enrichment and conflict resolution
-- Cron-based daily refresh implementation
+- Alerts for failed ingestion / stale data
 - Additional CI/CD hardening
 
 ## Blockers
@@ -105,8 +106,8 @@ Planned focus:
 
 **Data Phase 4 — Automated refresh** (see [README.md](README.md))
 
-- Implement `GET /api/cron/refresh` ingestion job using the validated manual API-Football sync path
-- Wire Vercel cron with monitoring/alerts for failed ingestion or stale data
+- Validate the scheduled production cron run after deploy
+- Add explicit alerting/stale-data notification if operational needs require it
 
 ---
 
