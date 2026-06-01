@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ProviderPlayerRecord } from '../provider/types';
 import { createServerSupabaseClient } from './server';
-import { upsertProviderPlayers } from './providerSync';
+import { getProviderLastSyncedAt, upsertProviderPlayers } from './providerSync';
 
 vi.mock('./server', () => ({
   createServerSupabaseClient: vi.fn(),
@@ -74,5 +74,27 @@ describe('upsertProviderPlayers', () => {
       yellow_cards: 0,
       red_cards: 0,
     });
+  });
+
+  it('reads the latest provider sync timestamp from player updates', async () => {
+    const limit = vi.fn().mockResolvedValue({
+      data: [{ updated_at: '2026-01-01T00:00:00.000Z' }],
+      error: null,
+    });
+    const order = vi.fn(() => ({ limit }));
+    const eq = vi.fn(() => ({ order }));
+    const select = vi.fn(() => ({ eq }));
+    const from = vi.fn(() => ({ select }));
+
+    mockedCreateServerSupabaseClient.mockReturnValue({
+      from,
+    } as unknown as ReturnType<typeof createServerSupabaseClient>);
+
+    await expect(getProviderLastSyncedAt('apiFootball')).resolves.toBe('2026-01-01T00:00:00.000Z');
+    expect(from).toHaveBeenCalledWith('players');
+    expect(select).toHaveBeenCalledWith('updated_at');
+    expect(eq).toHaveBeenCalledWith('provider_source', 'apiFootball');
+    expect(order).toHaveBeenCalledWith('updated_at', { ascending: false });
+    expect(limit).toHaveBeenCalledWith(1);
   });
 });

@@ -115,6 +115,12 @@ Optional production-mode smoke test (starts `next start` on port 3000):
 npm run smoke:local
 ```
 
+Optional cron health smoke test against a deployed app:
+
+```bash
+BASE_URL=https://your-app.vercel.app CRON_SECRET=... npm run smoke:cron
+```
+
 Optional endpoint performance review against a running app:
 
 ```bash
@@ -146,6 +152,7 @@ Set these in the Vercel project (**Settings → Environment Variables**):
 | `SUPABASE_SERVICE_ROLE_KEY` | Optional for app, required for provider sync | Server writes; app reads fall back to anon key |
 | `CRON_SECRET` | Required for cron route | Vercel sends this as `Authorization: Bearer <CRON_SECRET>`; cron returns `503` if unset |
 | `LOG_LEVEL` | Optional | `info` by default; supports `info`, `warn`, `error`, `silent` |
+| `REFRESH_STALE_AFTER_HOURS` | Optional | Cron health stale threshold; defaults to `36` hours |
 | `API_FOOTBALL_API_KEY` | Required for manual provider sync | Sent as `x-apisports-key` |
 | `API_FOOTBALL_PLAYERS_URL` | Required for manual provider sync | Full API-Football players endpoint URL to fetch |
 
@@ -164,6 +171,8 @@ Set these in the Vercel project (**Settings → Environment Variables**):
 ### Cron note
 
 `vercel.json` schedules `GET /api/cron/refresh` daily at `05:00 UTC`. The route requires `Authorization: Bearer <CRON_SECRET>` and runs the validated API-Football sync path.
+
+`GET /api/cron/health` uses the same authorization and returns refresh health. When Supabase is configured, stale checks use the latest API-Football `players.updated_at`; otherwise they use the current server process snapshot. The default stale threshold is 36 hours, which allows a daily cron one missed-run buffer.
 
 ### Deploy commands
 
@@ -185,6 +194,14 @@ Checks:
 - `GET /api/players/search?q=salah` returns results
 - `POST /api/recommend` returns recommendations for Mohamed Salah
 - `GET /` returns the home page
+
+To also verify the cron health endpoint after a production deploy:
+
+```bash
+BASE_URL=https://your-app.vercel.app CRON_SECRET=... npm run smoke:cron
+```
+
+Set `SMOKE_CRON_HEALTH_EXPECT_HEALTHY=1` when the deploy should already have a fresh successful cron run recorded.
 
 ### Hosted Supabase verification (optional)
 
@@ -236,6 +253,7 @@ MVP route surface:
 - `GET /api/recommendation-runs` — list recent run metadata (newest first, limit 20).
 - `GET /api/recommendation-runs/[runKey]` — fetch one run including stored response payload.
 - `GET /api/cron/refresh` — scheduled API-Football refresh route (configured in `vercel.json`; requires cron authorization).
+- `GET /api/cron/health` — authenticated refresh-health snapshot for cron validation and stale-data checks.
 
 Recommendation runs are stored in Supabase when configured; otherwise they are kept in an in-memory buffer for the current server process (seed-only local dev).
 
@@ -246,6 +264,8 @@ Recommendation runs are stored in Supabase when configured; otherwise they are k
 - Public MVP routes use best-effort in-memory rate limits per IP and route: `POST /api/recommend` allows 20 requests per minute, and nonblank `GET /api/players/search` allows 60 requests per minute.
 - Rate-limit responses use the additive API error shape with `code: "RATE_LIMITED"` and status `429`.
 - Cron calls must include `Authorization: Bearer <CRON_SECRET>`; missing or invalid secrets return `CRON_UNAUTHORIZED`, unset `CRON_SECRET` returns `CRON_NOT_CONFIGURED`, and sync failures return `CRON_REFRESH_FAILED`.
+- Cron refresh success and failure logs include refresh-health metadata (`refreshStatus`, `isStale`, `needsAttention`, timestamps, and stale threshold). Failed syncs also emit `cron.refresh.alert`.
+- Cron health is intentionally lightweight. It reads Supabase freshness when available and keeps latest failure metadata in-process; use Vercel cron execution history and structured logs as the durable source for failed-run details. Use `npm run smoke:cron` to confirm the deployed health route is reachable and correctly authorized.
 
 ## Seed-data-first architecture
 
@@ -278,7 +298,7 @@ Provider integrations are intentionally staged:
 
 4. **Phase 4 — Fully automated refresh**
    - Run daily ingestion via cron (`/api/cron/refresh`).
-   - Monitor refresh results using structured logs and Vercel cron failure visibility.
+   - Monitor refresh results using structured logs, the authenticated health route, and Vercel cron failure visibility.
 
 This keeps MVP delivery fast while preserving a path to production-grade data operations.
 

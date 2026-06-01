@@ -112,6 +112,23 @@ export async function upsertProviderPlayers(records: ProviderPlayerRecord[]): Pr
   };
 }
 
+export async function getProviderLastSyncedAt(providerSource: string): Promise<string | null> {
+  const supabase = createServerSupabaseClient();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from('players')
+    .select('updated_at')
+    .eq('provider_source', providerSource)
+    .order('updated_at', { ascending: false })
+    .limit(1);
+
+  if (error || !data?.[0]) return null;
+
+  const updatedAt = (data[0] as { updated_at?: string | null }).updated_at;
+  return updatedAt ?? null;
+}
+
 function toPlayerRow(record: ProviderPlayerRecord): PlayerUpsertRow {
   return {
     provider_player_id: record.providerPlayerId,

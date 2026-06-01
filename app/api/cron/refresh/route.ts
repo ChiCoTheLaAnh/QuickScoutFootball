@@ -3,6 +3,11 @@ import { NextResponse } from 'next/server';
 import { apiError } from '@/src/lib/apiErrors';
 import { logServerEvent } from '@/src/lib/logging';
 import { syncApiFootballPlayers } from '@/src/lib/provider/apiFootballSync';
+import {
+  recordRefreshFailure,
+  recordRefreshSuccess,
+  type RefreshHealthSnapshot,
+} from '@/src/lib/provider/refreshHealth';
 
 export async function GET(req: Request) {
   const startedAt = Date.now();
@@ -31,6 +36,7 @@ export async function GET(req: Request) {
   try {
     const summary = await syncApiFootballPlayers();
     const durationMs = Date.now() - startedAt;
+    const health = recordRefreshSuccess(summary);
 
     logServerEvent({
       event: 'cron.refresh.completed',
@@ -44,6 +50,7 @@ export async function GET(req: Request) {
         playersUpserted: summary.playersUpserted,
         statsUpserted: summary.statsUpserted,
         skipped: summary.skipped,
+        ...toRefreshHealthMetadata(health),
       },
     });
 
@@ -55,6 +62,11 @@ export async function GET(req: Request) {
     const durationMs = Date.now() - startedAt;
     const errorName = error instanceof Error ? error.name : 'UnknownError';
     const errorMessage = error instanceof Error ? error.message : 'Unknown cron refresh failure';
+    const health = recordRefreshFailure({
+      errorName,
+      errorMessage,
+      durationMs,
+    });
 
     logServerEvent({
       event: 'cron.refresh.failed',
@@ -64,6 +76,21 @@ export async function GET(req: Request) {
       metadata: {
         errorName,
         errorMessage,
+        ...toRefreshHealthMetadata(health),
+      },
+    });
+
+    logServerEvent({
+      event: 'cron.refresh.alert',
+      route: '/api/cron/refresh',
+      status: 500,
+      durationMs,
+      level: 'error',
+      metadata: {
+        reason: 'sync_failed',
+        errorName,
+        errorMessage,
+        ...toRefreshHealthMetadata(health),
       },
     });
 
@@ -72,4 +99,16 @@ export async function GET(req: Request) {
       errorMessage,
     });
   }
+}
+
+function toRefreshHealthMetadata(health: RefreshHealthSnapshot) {
+  return {
+    refreshStatus: health.status,
+    isStale: health.isStale,
+    needsAttention: health.needsAttention,
+    lastSuccessAt: health.lastSuccessAt,
+    lastFailureAt: health.lastFailureAt,
+    ageMs: health.ageMs,
+    staleAfterMs: health.staleAfterMs,
+  };
 }

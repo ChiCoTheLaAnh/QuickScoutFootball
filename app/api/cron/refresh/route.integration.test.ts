@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { syncApiFootballPlayers } from '@/src/lib/provider/apiFootballSync';
+import { getRefreshHealth, resetRefreshHealthForTests } from '@/src/lib/provider/refreshHealth';
 import { GET } from './route';
 
 vi.mock('@/src/lib/provider/apiFootballSync', () => ({
@@ -24,10 +25,12 @@ function restoreEnvValue(key: string, value: string | undefined): void {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  resetRefreshHealthForTests();
   process.env.LOG_LEVEL = 'silent';
 });
 
 afterEach(() => {
+  resetRefreshHealthForTests();
   restoreEnvValue('CRON_SECRET', savedEnv.cronSecret);
   restoreEnvValue('LOG_LEVEL', savedEnv.logLevel);
 });
@@ -43,6 +46,7 @@ describe('GET /api/cron/refresh', () => {
     expect(payload.error).toBe('Cron secret is not configured.');
     expect(payload.code).toBe('CRON_NOT_CONFIGURED');
     expect(mockedSyncApiFootballPlayers).not.toHaveBeenCalled();
+    expect(getRefreshHealth().status).toBe('unknown');
   });
 
   it('returns 401 without a matching authorization header', async () => {
@@ -57,6 +61,7 @@ describe('GET /api/cron/refresh', () => {
     expect(payload.error).toBe('Unauthorized cron request.');
     expect(payload.code).toBe('CRON_UNAUTHORIZED');
     expect(mockedSyncApiFootballPlayers).not.toHaveBeenCalled();
+    expect(getRefreshHealth().status).toBe('unknown');
   });
 
   it('runs API-Football sync when cron auth passes', async () => {
@@ -88,6 +93,8 @@ describe('GET /api/cron/refresh', () => {
       },
     });
     expect(mockedSyncApiFootballPlayers).toHaveBeenCalledOnce();
+    expect(getRefreshHealth().status).toBe('healthy');
+    expect(getRefreshHealth().lastSummary).toEqual(payload.summary);
   });
 
   it('returns a coded 500 response when API-Football sync fails', async () => {
@@ -109,5 +116,11 @@ describe('GET /api/cron/refresh', () => {
       },
     });
     expect(mockedSyncApiFootballPlayers).toHaveBeenCalledOnce();
+    const health = getRefreshHealth();
+    expect(health.status).toBe('failed');
+    expect(health.lastFailure).toMatchObject({
+      errorName: 'Error',
+      errorMessage: 'provider unavailable',
+    });
   });
 });

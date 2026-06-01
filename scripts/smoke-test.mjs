@@ -2,6 +2,8 @@
 
 const baseUrl = (process.env.BASE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 const checkSupabaseRuns = process.env.SMOKE_SUPABASE === '1';
+const checkCronHealth = process.env.SMOKE_CRON_HEALTH === '1';
+const expectHealthyCron = process.env.SMOKE_CRON_HEALTH_EXPECT_HEALTHY === '1';
 
 const validRecommendBody = {
   targetPlayerName: 'Mohamed Salah',
@@ -74,6 +76,28 @@ async function main() {
     const list = Array.isArray(runs.json) ? runs.json : runs.json?.runs ?? runs.json;
     assert(Array.isArray(list) && list.length > 0, 'No recommendation runs returned (Supabase may be unset)');
     console.log('Supabase run persistence: OK');
+  }
+
+  if (checkCronHealth) {
+    const cronSecret = process.env.CRON_SECRET?.trim();
+    assert(cronSecret, 'CRON_SECRET is required for cron health smoke checks');
+
+    const health = await request('/api/cron/health', {
+      headers: { authorization: `Bearer ${cronSecret}` },
+    });
+    assert(health.response.ok, `GET /api/cron/health failed (${health.response.status}): ${health.text}`);
+    assert(typeof health.json?.status === 'string', 'Cron health response missing status');
+    assert(typeof health.json?.needsAttention === 'boolean', 'Cron health response missing needsAttention');
+    assert(typeof health.json?.isStale === 'boolean', 'Cron health response missing isStale');
+
+    if (expectHealthyCron) {
+      assert(
+        health.json.needsAttention === false,
+        `Cron health needs attention: ${JSON.stringify(health.json)}`,
+      );
+    }
+
+    console.log(`Cron health: ${health.json.status}`);
   }
 
   console.log('Smoke test passed.');

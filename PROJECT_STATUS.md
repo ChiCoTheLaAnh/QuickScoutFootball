@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-**Phase 3 — Production Readiness core tasks complete; Data Phase 2 validated; Phase 4 automated refresh core implemented**
+**Phase 3 — Production Readiness core tasks complete; Data Phase 2 validated; Phase 4 automated refresh core and health checks implemented**
 
 Data pipeline context (see [README.md](README.md)): **Phase 1 (Seed baseline)** is complete. **Phase 2 (Single provider sync)** is validated for API-Football against hosted Supabase.
 
@@ -59,6 +59,7 @@ Avoid:
 - README includes a quick start for scouts
 - Hosted API-Football sync validated against Supabase (`fetched: 20`, `transformed: 20`, `playersUpserted: 20`, `statsUpserted: 20`, `skipped: 0`)
 - Automated API-Football cron refresh calls the validated sync path and logs refresh summaries/failures
+- Automated refresh health tracks last success/failure, stale status, and emits alert-ready structured logs plus an authenticated health endpoint
 
 ## In Progress
 
@@ -68,7 +69,6 @@ Avoid:
 
 - Authentication
 - Multi-provider enrichment and conflict resolution
-- Alerts for failed ingestion / stale data
 - Additional CI/CD hardening
 
 ## Blockers
@@ -107,7 +107,7 @@ Planned focus:
 **Data Phase 4 — Automated refresh** (see [README.md](README.md))
 
 - Validate the scheduled production cron run after deploy
-- Add explicit alerting/stale-data notification if operational needs require it
+- Use cron health output and structured logs to monitor stale data after deploy
 
 ---
 

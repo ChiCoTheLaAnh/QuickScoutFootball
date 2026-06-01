@@ -91,7 +91,7 @@ Aligned with [README.md](README.md) provider integration plan.
 
 - [x] Implement `GET /api/cron/refresh` ingestion job
 - [x] Wire Vercel cron (`vercel.json`) with monitoring
-- [ ] Alert on failed ingestion / stale data
+- [x] Alert on failed ingestion / stale data
 
 ---
 
