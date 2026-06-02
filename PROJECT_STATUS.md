@@ -2,21 +2,21 @@
 
 ## Current Phase
 
-**Phase 3 — Production Readiness core tasks complete; Data Phase 2 validated; Phase 4 automated refresh validated in production**
+**Product Phase 4 — Scout Workflow UX planning; production readiness and automated refresh validated**
 
 Data pipeline context (see [README.md](README.md)): **Phase 1 (Seed baseline)** is complete. **Phase 2 (Single provider sync)** is validated for API-Football against hosted Supabase.
 
 ## Objective Of Current Phase
 
-Build a working end-to-end MVP with core scouting functionality only.
+Turn the working recommender into a more useful scout workflow without adding auth or multi-provider complexity.
 
 Focus on:
 
-- Player search and recommendation flow (target player → filters → ranked candidates)
-- Explainable scoring (similarity, role fit, affordability, age upside)
+- Recommendation history using existing persisted runs
+- Recommendation run detail/replay from saved request and response payloads
+- CSV export for current and saved candidate lists
 - Seed-data-first local dev with optional Supabase persistence
 - Stable API contracts for players and recommendation runs
-- Deployability on Vercel
 
 Avoid:
 
@@ -24,7 +24,8 @@ Avoid:
 - Large refactors
 - Overengineering
 - Unnecessary abstractions
-- Multi-provider ingestion before one provider works
+- Auth, accounts, and schema-heavy watchlists unless explicitly requested
+- Multi-provider reconciliation before scout workflow UX is useful
 
 ---
 
@@ -65,18 +66,21 @@ Avoid:
 
 ## In Progress
 
-- None
+- Recommendation history UI
+- Recommendation run detail/replay view
+- CSV export for candidate lists
 
 ## Not Started (This Phase Or Later)
 
 - Authentication
 - Multi-provider enrichment and conflict resolution
 - Additional CI/CD hardening after production smoke observations
+- Candidate comparison/shortlist UX without auth
 
 ## Blockers
 
 - None critical for local MVP development
-- None for Data Phase 2 validation
+- None for Data Phase 2 or automated refresh validation
 
 ---
 
@@ -96,15 +100,14 @@ The phase is complete when:
 
 # Next Phase
 
-**Phase 3 — Production Readiness** (product)
+**Product Phase 4 — Scout Workflow UX**
 
 Planned focus:
 
-- Route integration and E2E tests
-- Performance and caching where measured bottlenecks exist
-- Monitoring and structured logging
-- Security (auth, cron secret, rate limits)
-- CI/CD pipeline (lint, test, build on PR)
+- Recommendation history page or panel backed by `GET /api/recommendation-runs`
+- Recommendation run detail/replay view backed by `GET /api/recommendation-runs/[runKey]`
+- CSV export for current results and saved run results
+- E2E coverage for history/detail/export once implemented
 
 **Data Phase 4 — Automated refresh** (see [README.md](README.md))
 

@@ -1,6 +1,6 @@
 # Project Roadmap
 
-Priority order: complete **Phase 2 — MVP** items before **Phase 3 — Production** or data-phase provider work unless explicitly requested.
+Priority order: **Product Phase 4 — Scout Workflow UX** is the next default focus after MVP, production readiness, and automated refresh validation. Avoid auth, provider reconciliation, and schema-heavy watchlists unless explicitly requested.
 
 ---
 
@@ -61,6 +61,27 @@ Priority order: complete **Phase 2 — MVP** items before **Phase 3 — Producti
 - [x] Secure cron endpoint (`CRON_SECRET` or Vercel cron auth)
 - [x] Performance review (search debounce, recommend payload size)
 - [x] Manual post-deploy smoke workflow for production validation
+
+---
+
+# Product Phase 4 — Scout Workflow UX
+
+## High Priority
+
+- [ ] Add recommendation run history view using existing `GET /api/recommendation-runs`
+- [ ] Add recommendation run detail view using existing `GET /api/recommendation-runs/[runKey]`
+- [ ] Add CSV export for current results and saved run results
+
+## Medium Priority
+
+- [ ] Add candidate comparison/shortlist UX without auth
+- [ ] Add smoke or E2E coverage for history and export
+
+## Explicitly Out Of Scope Unless Requested
+
+- [ ] Authentication and user accounts
+- [ ] Multi-provider conflict resolution
+- [ ] Schema-heavy watchlists or saved-team planning
 
 ---
 

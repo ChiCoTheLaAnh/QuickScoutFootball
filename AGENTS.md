@@ -29,6 +29,14 @@ When working on the repository:
 5. Prefer minimal safe changes
 6. Explain reasoning before major edits
 
+### Current Priority Guidance
+
+After production cron validation, prefer scout workflow improvements before auth or provider expansion:
+
+- Build on existing recommendation-run APIs and Supabase fallback patterns
+- Prioritize recommendation history, run detail/replay, and candidate export UX
+- Do not add auth, accounts, provider reconciliation, or schema-heavy watchlists unless explicitly requested
+
 ---
 
 ## Coding Rules
