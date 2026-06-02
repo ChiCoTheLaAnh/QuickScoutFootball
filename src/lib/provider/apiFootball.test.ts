@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ProviderPlayerRaw } from '../types';
 import {
+  fetchApiFootballPlayerCoverage,
   fetchApiFootballPlayers,
   transformApiFootballPlayer,
   transformApiFootballPlayerRecord,
@@ -104,11 +105,15 @@ describe('fetchApiFootballPlayers', () => {
   const savedEnv = {
     apiKey: process.env.API_FOOTBALL_API_KEY,
     playersUrl: process.env.API_FOOTBALL_PLAYERS_URL,
+    playersUrls: process.env.API_FOOTBALL_PLAYERS_URLS,
+    maxPagesPerTarget: process.env.API_FOOTBALL_MAX_PAGES_PER_TARGET,
   };
 
   beforeEach(() => {
     process.env.API_FOOTBALL_API_KEY = 'test-api-key';
     process.env.API_FOOTBALL_PLAYERS_URL = 'https://v3.football.api-sports.io/players?league=39&season=2025';
+    delete process.env.API_FOOTBALL_PLAYERS_URLS;
+    delete process.env.API_FOOTBALL_MAX_PAGES_PER_TARGET;
   });
 
   afterEach(() => {
@@ -124,6 +129,18 @@ describe('fetchApiFootballPlayers', () => {
       delete process.env.API_FOOTBALL_PLAYERS_URL;
     } else {
       process.env.API_FOOTBALL_PLAYERS_URL = savedEnv.playersUrl;
+    }
+
+    if (savedEnv.playersUrls === undefined) {
+      delete process.env.API_FOOTBALL_PLAYERS_URLS;
+    } else {
+      process.env.API_FOOTBALL_PLAYERS_URLS = savedEnv.playersUrls;
+    }
+
+    if (savedEnv.maxPagesPerTarget === undefined) {
+      delete process.env.API_FOOTBALL_MAX_PAGES_PER_TARGET;
+    } else {
+      process.env.API_FOOTBALL_MAX_PAGES_PER_TARGET = savedEnv.maxPagesPerTarget;
     }
   });
 
@@ -143,6 +160,173 @@ describe('fetchApiFootballPlayers', () => {
         payload: sampleRaw.payload,
       },
     ]);
+  });
+
+  it('reports target and page counts for a single configured URL', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        errors: [],
+        paging: { current: 1, total: 1 },
+        response: [sampleRaw.payload],
+      }),
+    }));
+
+    await expect(fetchApiFootballPlayerCoverage()).resolves.toMatchObject({
+      players: [
+        {
+          provider: 'apiFootball',
+          sourceId: '306',
+          payload: sampleRaw.payload,
+        },
+      ],
+      targetsFetched: 1,
+      pagesFetched: 1,
+    });
+  });
+
+  it('fetches multiple configured player URLs', async () => {
+    delete process.env.API_FOOTBALL_PLAYERS_URL;
+    process.env.API_FOOTBALL_PLAYERS_URLS = [
+      'https://v3.football.api-sports.io/players?league=39&season=2025',
+      'https://v3.football.api-sports.io/players?league=140&season=2025',
+    ].join('\n');
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          errors: [],
+          paging: { current: 1, total: 1 },
+          response: [sampleRaw.payload],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          errors: [],
+          paging: { current: 1, total: 1 },
+          response: [{
+            player: { id: 999, name: 'Second Player' },
+            statistics: [],
+          }],
+        }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchApiFootballPlayerCoverage()).resolves.toMatchObject({
+      targetsFetched: 2,
+      pagesFetched: 2,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('follows API-Football pagination until the reported total page count', async () => {
+    const secondPagePayload = {
+      player: { id: 307, name: 'Page Two Player' },
+      statistics: [],
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          errors: [],
+          paging: { current: 1, total: 2 },
+          response: [sampleRaw.payload],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          errors: [],
+          paging: { current: 2, total: 2 },
+          response: [secondPagePayload],
+        }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await fetchApiFootballPlayerCoverage();
+
+    expect(result.players.map((player) => player.sourceId)).toEqual(['306', '307']);
+    expect(result.pagesFetched).toBe(2);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'https://v3.football.api-sports.io/players?league=39&season=2025&page=1',
+      expect.any(Object),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'https://v3.football.api-sports.io/players?league=39&season=2025&page=2',
+      expect.any(Object),
+    );
+  });
+
+  it('caps pagination at API_FOOTBALL_MAX_PAGES_PER_TARGET', async () => {
+    process.env.API_FOOTBALL_MAX_PAGES_PER_TARGET = '2';
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          errors: [],
+          paging: { current: 1, total: 5 },
+          response: [sampleRaw.payload],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          errors: [],
+          paging: { current: 2, total: 5 },
+          response: [{
+            player: { id: 307, name: 'Page Two Player' },
+            statistics: [],
+          }],
+        }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await fetchApiFootballPlayerCoverage();
+
+    expect(result.pagesFetched).toBe(2);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('de-dupes players fetched across targets and pages', async () => {
+    delete process.env.API_FOOTBALL_PLAYERS_URL;
+    process.env.API_FOOTBALL_PLAYERS_URLS = [
+      'https://v3.football.api-sports.io/players?league=39&season=2025',
+      'https://v3.football.api-sports.io/players?team=40&season=2025',
+    ].join(',');
+
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          errors: [],
+          paging: { current: 1, total: 1 },
+          response: [sampleRaw.payload],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          errors: [],
+          paging: { current: 1, total: 1 },
+          response: [
+            sampleRaw.payload,
+            {
+              player: { id: 307, name: 'Unique Player' },
+              statistics: [],
+            },
+          ],
+        }),
+      }));
+
+    const result = await fetchApiFootballPlayerCoverage();
+
+    expect(result.players.map((player) => player.sourceId)).toEqual(['306', '307']);
+    expect(result.targetsFetched).toBe(2);
+    expect(result.pagesFetched).toBe(2);
   });
 
   it('fails when API-Football returns structured provider errors', async () => {

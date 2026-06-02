@@ -11,13 +11,61 @@ import {
   type ProviderSeasonStats,
 } from './types';
 
-export async function fetchApiFootballPlayers(): Promise<ProviderPlayerRaw[]> {
-  const url = process.env.API_FOOTBALL_PLAYERS_URL?.trim();
-  const apiKey = process.env.API_FOOTBALL_API_KEY?.trim();
+const DEFAULT_MAX_PAGES_PER_TARGET = 10;
 
-  if (!url) {
-    throw new Error('API_FOOTBALL_PLAYERS_URL is required for API-Football sync');
+export interface ApiFootballFetchResult {
+  players: ProviderPlayerRaw[];
+  targetsFetched: number;
+  pagesFetched: number;
+}
+
+export async function fetchApiFootballPlayers(): Promise<ProviderPlayerRaw[]> {
+  return (await fetchApiFootballPlayerCoverage()).players;
+}
+
+export async function fetchApiFootballPlayerCoverage(): Promise<ApiFootballFetchResult> {
+  const targetUrls = getApiFootballTargetUrls();
+  const maxPagesPerTarget = getApiFootballMaxPagesPerTarget();
+  const playersByKey = new Map<string, ProviderPlayerRaw>();
+  let pagesFetched = 0;
+
+  for (const targetUrl of targetUrls) {
+    let page = 1;
+    let totalPages = 1;
+
+    while (page <= Math.min(totalPages, maxPagesPerTarget)) {
+      const pageResult = await fetchApiFootballPlayersPage(targetUrl, page);
+      pagesFetched += 1;
+
+      if (pageResult.players.length === 0) {
+        if (page === 1) {
+          throw new Error(buildEmptyResponseMessage(pageResult.payload));
+        }
+        break;
+      }
+
+      for (const player of pageResult.players) {
+        playersByKey.set(`${player.provider}:${player.sourceId}`, player);
+      }
+
+      totalPages = Math.max(1, pageResult.totalPages ?? 1);
+      page += 1;
+    }
   }
+
+  return {
+    players: [...playersByKey.values()],
+    targetsFetched: targetUrls.length,
+    pagesFetched,
+  };
+}
+
+async function fetchApiFootballPlayersPage(
+  targetUrl: string,
+  page: number,
+): Promise<{ players: ProviderPlayerRaw[]; totalPages?: number; payload: unknown }> {
+  const url = withPageParam(targetUrl, page);
+  const apiKey = process.env.API_FOOTBALL_API_KEY?.trim();
 
   if (!apiKey) {
     throw new Error('API_FOOTBALL_API_KEY is required for API-Football sync');
@@ -38,11 +86,7 @@ export async function fetchApiFootballPlayers(): Promise<ProviderPlayerRaw[]> {
   assertNoProviderErrors(payload);
 
   const rows = extractRows(payload);
-  if (rows.length === 0) {
-    throw new Error(buildEmptyResponseMessage(payload));
-  }
-
-  return rows
+  const players = rows
     .map((row) => {
       const sourceId = extractSourceId(row);
       if (!sourceId) return null;
@@ -53,6 +97,12 @@ export async function fetchApiFootballPlayers(): Promise<ProviderPlayerRaw[]> {
       };
     })
     .filter((row): row is ProviderPlayerRaw => Boolean(row));
+
+  return {
+    players,
+    totalPages: extractTotalPages(payload),
+    payload,
+  };
 }
 
 export function transformApiFootballPlayer(raw: ProviderPlayerRaw): Player | null {
@@ -124,6 +174,47 @@ function extractRows(payload: unknown): unknown[] {
   if (Array.isArray(record.results)) return record.results;
   if (Array.isArray(record.players)) return record.players;
   return [];
+}
+
+function extractTotalPages(payload: unknown): number | undefined {
+  const record = toRecord(payload);
+  const paging = toRecord(record?.paging);
+  return toOptionalNumber(paging?.total);
+}
+
+function getApiFootballTargetUrls(): string[] {
+  const configuredUrls = [
+    ...splitConfiguredUrls(process.env.API_FOOTBALL_PLAYERS_URL),
+    ...splitConfiguredUrls(process.env.API_FOOTBALL_PLAYERS_URLS),
+  ];
+  const targetUrls = [...new Set(configuredUrls)];
+
+  if (targetUrls.length === 0) {
+    throw new Error('API_FOOTBALL_PLAYERS_URL or API_FOOTBALL_PLAYERS_URLS is required for API-Football sync');
+  }
+
+  return targetUrls;
+}
+
+function splitConfiguredUrls(value: string | undefined): string[] {
+  return (value ?? '')
+    .split(/[\n,]+/)
+    .map((url) => url.trim())
+    .filter(Boolean);
+}
+
+function getApiFootballMaxPagesPerTarget(): number {
+  const parsed = Number(process.env.API_FOOTBALL_MAX_PAGES_PER_TARGET);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return Math.floor(parsed);
+  }
+  return DEFAULT_MAX_PAGES_PER_TARGET;
+}
+
+function withPageParam(targetUrl: string, page: number): string {
+  const url = new URL(targetUrl);
+  url.searchParams.set('page', String(page));
+  return url.toString();
 }
 
 function assertNoProviderErrors(payload: unknown): void {

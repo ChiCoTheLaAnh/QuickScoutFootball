@@ -50,6 +50,8 @@ export async function GET(req: Request) {
         playersUpserted: summary.playersUpserted,
         statsUpserted: summary.statsUpserted,
         skipped: summary.skipped,
+        targetsFetched: summary.targetsFetched,
+        pagesFetched: summary.pagesFetched,
         ...toRefreshHealthMetadata(health),
       },
     });

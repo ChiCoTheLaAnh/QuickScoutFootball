@@ -116,6 +116,14 @@ Aligned with [README.md](README.md) provider integration plan.
 - [x] Alert on failed ingestion / stale data
 - [x] Validate scheduled production cron run after deploy
 
+## Phase 5 — Expanded API-Football coverage
+
+- [x] Support multiple configured API-Football player URLs
+- [x] Follow API-Football pagination with a per-target page cap
+- [x] De-dupe provider players before transform/upsert
+- [x] Add coverage metadata to provider sync summaries
+- [x] Keep downstream app and recommendation API contracts unchanged
+
 ---
 
 # Future Ideas

@@ -154,7 +154,9 @@ Set these in the Vercel project (**Settings → Environment Variables**):
 | `LOG_LEVEL` | Optional | `info` by default; supports `info`, `warn`, `error`, `silent` |
 | `REFRESH_STALE_AFTER_HOURS` | Optional | Cron health stale threshold; defaults to `36` hours |
 | `API_FOOTBALL_API_KEY` | Required for manual provider sync | Sent as `x-apisports-key` |
-| `API_FOOTBALL_PLAYERS_URL` | Required for manual provider sync | Full API-Football players endpoint URL to fetch |
+| `API_FOOTBALL_PLAYERS_URL` | Required unless `API_FOOTBALL_PLAYERS_URLS` is set | Full API-Football players endpoint URL to fetch; still supported for single-target sync |
+| `API_FOOTBALL_PLAYERS_URLS` | Optional | Comma- or newline-separated full player endpoint URLs for expanded coverage |
+| `API_FOOTBALL_MAX_PAGES_PER_TARGET` | Optional | Pagination cap per configured URL; defaults to `10` |
 
 ### Seed-only deploy (fastest MVP)
 
@@ -233,6 +235,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 API_FOOTBALL_API_KEY=your-api-football-key
 API_FOOTBALL_PLAYERS_URL=https://your-api-football-players-endpoint
+# Optional expanded coverage:
+API_FOOTBALL_PLAYERS_URLS=https://endpoint-one,https://endpoint-two
+API_FOOTBALL_MAX_PAGES_PER_TARGET=10
 ```
 
 Run the sync:
@@ -241,7 +246,7 @@ Run the sync:
 npm run sync:api-football
 ```
 
-The command prints a JSON summary with `fetched`, `transformed`, `playersUpserted`, `statsUpserted`, and `skipped`. It does not print API keys, raw provider payloads, or full player records.
+The command prints a JSON summary with `fetched`, `transformed`, `playersUpserted`, `statsUpserted`, `skipped`, and coverage metadata such as `targetsFetched` and `pagesFetched`. It does not print API keys, raw provider payloads, configured URLs, or full player records.
 
 ## API routes
 
@@ -299,7 +304,7 @@ Use this after each production deploy with Supabase, API-Football, and `CRON_SEC
 5. Triage failures:
    - `CRON_NOT_CONFIGURED`: set `CRON_SECRET` on the deployment.
    - `CRON_UNAUTHORIZED`: align Vercel cron authorization and the deployment `CRON_SECRET`.
-   - `CRON_REFRESH_FAILED`: verify `API_FOOTBALL_API_KEY`, `API_FOOTBALL_PLAYERS_URL`, Supabase service-role credentials, and provider quota.
+   - `CRON_REFRESH_FAILED`: verify `API_FOOTBALL_API_KEY`, `API_FOOTBALL_PLAYERS_URL` or `API_FOOTBALL_PLAYERS_URLS`, Supabase service-role credentials, and provider quota.
    - `status: "unknown"`: no successful refresh is visible yet; wait for the first scheduled run or run the refresh manually with valid cron auth.
    - `status: "stale"`: the last Supabase API-Football player update is older than `REFRESH_STALE_AFTER_HOURS`; inspect cron history and provider sync logs.
 
@@ -337,6 +342,13 @@ Provider integrations are intentionally staged:
 4. **Phase 4 — Fully automated refresh**
    - Run daily ingestion via cron (`/api/cron/refresh`).
    - Monitor refresh results using structured logs, the authenticated health route, and Vercel cron failure visibility.
+
+5. **Phase 5 — Expanded API-Football coverage**
+   - Continue using API-Football as the only active provider.
+   - Fetch one or more full player endpoint URLs through `API_FOOTBALL_PLAYERS_URL` and `API_FOOTBALL_PLAYERS_URLS`.
+   - Follow API-Football pagination up to `API_FOOTBALL_MAX_PAGES_PER_TARGET`.
+   - De-dupe provider player rows before transform/upsert.
+   - Keep downstream app and recommendation API contracts unchanged.
 
 This keeps MVP delivery fast while preserving a path to production-grade data operations.
 

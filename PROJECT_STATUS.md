@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-**Product Phase 4 — Scout Workflow UX core tasks complete; production readiness and automated refresh validated**
+**Product Phase 4 — Scout Workflow UX core tasks complete; Data Phase 5 expanded provider coverage implemented**
 
 Data pipeline context (see [README.md](README.md)): **Phase 1 (Seed baseline)** is complete. **Phase 2 (Single provider sync)** is validated for API-Football against hosted Supabase.
 
@@ -68,6 +68,7 @@ Avoid:
 - CSV export is available for current results and saved run results
 - Playwright E2E covers the core recommendation flow plus history/detail/export and shortlist export
 - Browser-only shortlist/comparison UX works without auth or database migrations
+- API-Football sync supports multiple configured player URLs, pagination with a page cap, de-dupe, and coverage metadata
 
 ## In Progress
 
@@ -83,6 +84,7 @@ Avoid:
 
 - None critical for local MVP development
 - None for Data Phase 2 or automated refresh validation
+- Expanded provider coverage requires production env configuration (`API_FOOTBALL_PLAYERS_URLS`) and operator validation before it changes live data volume
 
 ---
 
@@ -111,6 +113,10 @@ Planned focus:
 **Data Phase 4 — Automated refresh** (see [README.md](README.md))
 
 - Continue monitoring cron health output and structured logs for stale data after deploys
+
+**Data Phase 5 — Expanded provider coverage** (see [README.md](README.md))
+
+- Configure expanded API-Football URL targets in production and validate larger sync counts
 
 ---
 

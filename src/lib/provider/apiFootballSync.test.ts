@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProviderPlayerRaw } from '../types';
 import type { ProviderPlayerRecord } from './types';
 import { syncApiFootballPlayers } from './apiFootballSync';
-import { fetchApiFootballPlayers, transformApiFootballPlayerRecord } from './apiFootball';
+import { fetchApiFootballPlayerCoverage, transformApiFootballPlayerRecord } from './apiFootball';
 import { upsertProviderPlayers } from '../supabase/providerSync';
 
 vi.mock('./apiFootball', () => ({
-  fetchApiFootballPlayers: vi.fn(),
+  fetchApiFootballPlayerCoverage: vi.fn(),
   transformApiFootballPlayerRecord: vi.fn(),
 }));
 
@@ -15,7 +15,7 @@ vi.mock('../supabase/providerSync', () => ({
   upsertProviderPlayers: vi.fn(),
 }));
 
-const mockedFetch = vi.mocked(fetchApiFootballPlayers);
+const mockedFetch = vi.mocked(fetchApiFootballPlayerCoverage);
 const mockedTransform = vi.mocked(transformApiFootballPlayerRecord);
 const mockedUpsert = vi.mocked(upsertProviderPlayers);
 
@@ -42,7 +42,11 @@ describe('syncApiFootballPlayers', () => {
   });
 
   it('returns a safe sync summary with transformed and skipped counts', async () => {
-    mockedFetch.mockResolvedValue(rawPlayers);
+    mockedFetch.mockResolvedValue({
+      players: rawPlayers,
+      targetsFetched: 2,
+      pagesFetched: 3,
+    });
     mockedTransform
       .mockReturnValueOnce(syncRecord)
       .mockReturnValueOnce(null);
@@ -58,6 +62,8 @@ describe('syncApiFootballPlayers', () => {
       playersUpserted: 1,
       statsUpserted: 1,
       skipped: 1,
+      targetsFetched: 2,
+      pagesFetched: 3,
     });
     expect(mockedUpsert).toHaveBeenCalledWith([syncRecord]);
   });

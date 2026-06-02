@@ -1,4 +1,4 @@
-import { fetchApiFootballPlayers, transformApiFootballPlayerRecord } from './apiFootball';
+import { fetchApiFootballPlayerCoverage, transformApiFootballPlayerRecord } from './apiFootball';
 import { API_FOOTBALL_PROVIDER, type ProviderPlayerRecord } from './types';
 import { upsertProviderPlayers } from '../supabase/providerSync';
 
@@ -9,10 +9,13 @@ export interface ProviderSyncSummary {
   playersUpserted: number;
   statsUpserted: number;
   skipped: number;
+  targetsFetched?: number;
+  pagesFetched?: number;
 }
 
 export async function syncApiFootballPlayers(): Promise<ProviderSyncSummary> {
-  const rawPlayers = await fetchApiFootballPlayers();
+  const fetchResult = await fetchApiFootballPlayerCoverage();
+  const rawPlayers = fetchResult.players;
   const records = rawPlayers
     .map((raw) => transformApiFootballPlayerRecord(raw))
     .filter((record): record is ProviderPlayerRecord => Boolean(record));
@@ -26,5 +29,7 @@ export async function syncApiFootballPlayers(): Promise<ProviderSyncSummary> {
     playersUpserted: upsertResult.playersUpserted,
     statsUpserted: upsertResult.statsUpserted,
     skipped: rawPlayers.length - records.length,
+    targetsFetched: fetchResult.targetsFetched,
+    pagesFetched: fetchResult.pagesFetched,
   };
 }
