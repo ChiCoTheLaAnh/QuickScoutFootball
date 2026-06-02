@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test';
 
 test('scout can search for a target player and see recommendations', async ({ page }) => {
   await page.goto('/');
+  await page.evaluate(() => window.localStorage.clear());
+  await page.reload();
 
   await expect(page.getByRole('heading', { name: /QuickScout Football Recommender/i })).toBeVisible();
 
@@ -20,6 +22,18 @@ test('scout can search for a target player and see recommendations', async ({ pa
   await page.getByRole('button', { name: 'Export Current CSV' }).click();
   const currentDownload = await currentDownloadPromise;
   expect(currentDownload.suggestedFilename()).toBe('quickscout-current-results.csv');
+
+  await expect(page.getByRole('heading', { name: 'Shortlist' })).toBeVisible();
+  await page.getByRole('button', { name: 'Add to Shortlist' }).first().click();
+  await expect(page.getByText('1 candidates selected for comparison.')).toBeVisible();
+  await page.getByRole('button', { name: 'Remove' }).first().click();
+  await expect(page.getByText('No shortlisted candidates yet.')).toBeVisible();
+  await page.getByRole('button', { name: 'Add to Shortlist' }).first().click();
+
+  const shortlistDownloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export Shortlist CSV' }).click();
+  const shortlistDownload = await shortlistDownloadPromise;
+  expect(shortlistDownload.suggestedFilename()).toBe('quickscout-shortlist.csv');
 
   await expect(page.getByRole('heading', { name: 'Run History' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Mohamed Salah' }).first()).toBeVisible();

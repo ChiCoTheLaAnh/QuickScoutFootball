@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-**Product Phase 4 — Scout Workflow UX high-priority tasks complete; production readiness and automated refresh validated**
+**Product Phase 4 — Scout Workflow UX core tasks complete; production readiness and automated refresh validated**
 
 Data pipeline context (see [README.md](README.md)): **Phase 1 (Seed baseline)** is complete. **Phase 2 (Single provider sync)** is validated for API-Football against hosted Supabase.
 
@@ -66,7 +66,8 @@ Avoid:
 - Recommendation history UI uses existing persisted recommendation runs
 - Recommendation run detail/replay view uses saved request and response payloads
 - CSV export is available for current results and saved run results
-- Playwright E2E covers the core recommendation flow plus history/detail/export
+- Playwright E2E covers the core recommendation flow plus history/detail/export and shortlist export
+- Browser-only shortlist/comparison UX works without auth or database migrations
 
 ## In Progress
 
@@ -77,7 +78,6 @@ Avoid:
 - Authentication
 - Multi-provider enrichment and conflict resolution
 - Additional CI/CD hardening after production smoke observations
-- Candidate comparison/shortlist UX without auth
 
 ## Blockers
 
@@ -106,7 +106,6 @@ The phase is complete when:
 
 Planned focus:
 
-- Candidate comparison/shortlist UX without auth
 - Additional CI/CD hardening after production smoke observations
 
 **Data Phase 4 — Automated refresh** (see [README.md](README.md))

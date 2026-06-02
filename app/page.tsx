@@ -14,6 +14,7 @@ type PlayerSearchResult = {
 };
 
 type ResultRow = {
+  playerId?: string;
   rank?: number;
   playerName: string;
   age?: number;
@@ -31,6 +32,11 @@ type ResultRow = {
     affordability?: number;
     ageUpside?: number;
   };
+};
+
+type ShortlistItem = ResultRow & {
+  shortlistKey: string;
+  source: string;
 };
 
 type RecommendationRunSummary = {
@@ -58,6 +64,8 @@ const apiErrorMessages: Partial<Record<ApiErrorResponse['code'], string>> = {
   TARGET_PLAYER_NOT_FOUND: 'Target player not found. Choose a player from the search suggestions or refine the name.',
   PLAYER_SEARCH_FAILED: 'Player search is temporarily unavailable. Try again shortly.',
 };
+
+const SHORTLIST_STORAGE_KEY = 'quickscout-shortlist';
 
 function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   if (!value || typeof value !== 'object') return false;
@@ -141,6 +149,34 @@ function buildCsv(target: Player | null, rows: ResultRow[]): string {
   return [header, ...lines].map((line) => line.map(csvCell).join(',')).join('\n');
 }
 
+function buildShortlistKey(row: ResultRow): string {
+  if (row.playerId) return `player:${row.playerId}`;
+  return `player:${row.playerName.toLowerCase()}|mode:${row.candidateType ?? 'unknown'}`;
+}
+
+function createShortlistItem(row: ResultRow, source: string): ShortlistItem {
+  return {
+    ...row,
+    shortlistKey: buildShortlistKey(row),
+    source,
+  };
+}
+
+function parseStoredShortlist(value: string | null): ShortlistItem[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is ShortlistItem => {
+      if (!item || typeof item !== 'object') return false;
+      const candidate = item as Partial<ShortlistItem>;
+      return typeof candidate.shortlistKey === 'string' && typeof candidate.playerName === 'string';
+    });
+  } catch {
+    return [];
+  }
+}
+
 function downloadCsv(filename: string, csv: string): void {
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -175,6 +211,8 @@ export default function HomePage() {
   const [selectedRun, setSelectedRun] = useState<RecommendationRunDetail | null>(null);
   const [selectedRunLoading, setSelectedRunLoading] = useState(false);
   const [selectedRunError, setSelectedRunError] = useState<string | null>(null);
+  const [shortlist, setShortlist] = useState<ShortlistItem[]>([]);
+  const [shortlistLoaded, setShortlistLoaded] = useState(false);
 
   const searchContainerRef = useRef<HTMLLabelElement>(null);
   const formCardRef = useRef<HTMLDivElement>(null);
@@ -185,6 +223,7 @@ export default function HomePage() {
       const { player } = recommendation;
       return {
         rank: index + 1,
+        playerId: player.id,
         playerName: player.fullName,
         age: player.age,
         club: player.team,
@@ -209,6 +248,7 @@ export default function HomePage() {
   const shouldFetchSuggestions = trimmedTargetName.length > 0 && !isSelectionLocked;
   const visibleSearchResults = shouldFetchSuggestions ? searchResults : [];
   const isSearchDropdownOpen = shouldFetchSuggestions && searchOpen && visibleSearchResults.length > 0;
+  const shortlistedKeys = useMemo(() => new Set(shortlist.map((item) => item.shortlistKey)), [shortlist]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -247,6 +287,19 @@ export default function HomePage() {
   }, [loadHistory]);
 
   useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setShortlist(parseStoredShortlist(window.localStorage.getItem(SHORTLIST_STORAGE_KEY)));
+      setShortlistLoaded(true);
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
+    if (!shortlistLoaded) return;
+    window.localStorage.setItem(SHORTLIST_STORAGE_KEY, JSON.stringify(shortlist));
+  }, [shortlist, shortlistLoaded]);
+
+  useEffect(() => {
     if (!shouldFetchSuggestions) return;
 
     const timeout = setTimeout(async () => {
@@ -279,6 +332,7 @@ export default function HomePage() {
     const { player } = recommendation;
     return {
       rank: index + 1,
+      playerId: player.id,
       playerName: player.fullName,
       age: player.age,
       club: player.team,
@@ -406,6 +460,28 @@ export default function HomePage() {
   const exportSelectedRun = () => {
     if (!selectedRunResponse || selectedRunRows.length === 0) return;
     downloadCsv(`${selectedRun?.runKey ?? 'quickscout-run'}-results.csv`, buildCsv(selectedRunResponse.target, selectedRunRows));
+  };
+
+  const addToShortlist = (row: ResultRow, source: string) => {
+    const item = createShortlistItem(row, source);
+    setShortlist((current) => (
+      current.some((candidate) => candidate.shortlistKey === item.shortlistKey)
+        ? current
+        : [...current, item]
+    ));
+  };
+
+  const removeFromShortlist = (shortlistKey: string) => {
+    setShortlist((current) => current.filter((item) => item.shortlistKey !== shortlistKey));
+  };
+
+  const clearShortlist = () => {
+    setShortlist([]);
+  };
+
+  const exportShortlist = () => {
+    if (shortlist.length === 0) return;
+    downloadCsv('quickscout-shortlist.csv', buildCsv(null, shortlist));
   };
 
   return (
@@ -601,6 +677,15 @@ export default function HomePage() {
 
                   <p className="mt-4 text-sm leading-6 text-slate-700">{row.explanation ?? 'No explanation available.'}</p>
 
+                  <button
+                    type="button"
+                    onClick={() => addToShortlist(row, 'Current results')}
+                    disabled={shortlistedKeys.has(buildShortlistKey(row))}
+                    className="mt-4 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {shortlistedKeys.has(buildShortlistKey(row)) ? 'Shortlisted' : 'Add to Shortlist'}
+                  </button>
+
                   <dl className="mt-4 grid grid-cols-2 gap-2 rounded-lg bg-slate-50 p-3 text-xs text-slate-700">
                     <div>
                       <dt className="font-medium text-slate-500">Similarity</dt>
@@ -646,6 +731,7 @@ export default function HomePage() {
                     <th className="px-3 py-2">Output</th>
                     <th className="px-3 py-2">Affordability</th>
                     <th className="px-3 py-2">Age upside</th>
+                    <th className="px-3 py-2">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
@@ -666,6 +752,16 @@ export default function HomePage() {
                       <td className="px-3 py-2">{row.breakdown?.output ?? '—'}</td>
                       <td className="px-3 py-2">{row.breakdown?.affordability ?? '—'}</td>
                       <td className="px-3 py-2">{row.breakdown?.ageUpside ?? '—'}</td>
+                      <td className="px-3 py-2">
+                        <button
+                          type="button"
+                          onClick={() => addToShortlist(row, 'Current results')}
+                          disabled={shortlistedKeys.has(buildShortlistKey(row))}
+                          className="whitespace-nowrap rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {shortlistedKeys.has(buildShortlistKey(row)) ? 'Shortlisted' : 'Add to Shortlist'}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -834,6 +930,7 @@ export default function HomePage() {
                         <th className="px-3 py-2">Score / 100</th>
                         <th className="px-3 py-2">Club</th>
                         <th className="px-3 py-2">Candidate type</th>
+                        <th className="px-3 py-2">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white">
@@ -844,6 +941,16 @@ export default function HomePage() {
                           <td className="px-3 py-2">{formatScore(row.score)}</td>
                           <td className="px-3 py-2">{row.club ?? '—'}</td>
                           <td className="px-3 py-2">{formatMode(row.candidateType)}</td>
+                          <td className="px-3 py-2">
+                            <button
+                              type="button"
+                              onClick={() => addToShortlist(row, `Run ${selectedRun.runKey}`)}
+                              disabled={shortlistedKeys.has(buildShortlistKey(row))}
+                              className="whitespace-nowrap rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {shortlistedKeys.has(buildShortlistKey(row)) ? 'Shortlisted' : 'Add to Shortlist'}
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -853,6 +960,92 @@ export default function HomePage() {
             </div>
           )}
         </div>
+      </section>
+
+      <section className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold">Shortlist</h2>
+            <p className="mt-1 text-sm text-slate-600">{shortlist.length} candidates selected for comparison.</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={exportShortlist}
+              disabled={shortlist.length === 0}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Export Shortlist CSV
+            </button>
+            <button
+              type="button"
+              onClick={clearShortlist}
+              disabled={shortlist.length === 0}
+              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Clear Shortlist
+            </button>
+          </div>
+        </div>
+
+        {shortlist.length === 0 && (
+          <div className="mt-3 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            No shortlisted candidates yet.
+          </div>
+        )}
+
+        {shortlist.length > 0 && (
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                <tr>
+                  <th className="px-3 py-2">Player</th>
+                  <th className="px-3 py-2">Age</th>
+                  <th className="px-3 py-2">Club</th>
+                  <th className="px-3 py-2">Position</th>
+                  <th className="px-3 py-2">Market value</th>
+                  <th className="px-3 py-2">Score / 100</th>
+                  <th className="px-3 py-2">Candidate type</th>
+                  <th className="px-3 py-2">Similarity</th>
+                  <th className="px-3 py-2">Role fit</th>
+                  <th className="px-3 py-2">Output</th>
+                  <th className="px-3 py-2">Affordability</th>
+                  <th className="px-3 py-2">Age upside</th>
+                  <th className="px-3 py-2">Source</th>
+                  <th className="px-3 py-2">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {shortlist.map((item) => (
+                  <tr key={item.shortlistKey} className="align-top hover:bg-slate-50/60">
+                    <td className="px-3 py-2 font-medium">{item.playerName}</td>
+                    <td className="px-3 py-2">{item.age ?? '—'}</td>
+                    <td className="px-3 py-2">{item.club ?? '—'}</td>
+                    <td className="px-3 py-2">{item.position ?? '—'}</td>
+                    <td className="px-3 py-2">{formatMarketValue(item.marketValueEur)}</td>
+                    <td className="px-3 py-2">{formatScore(item.score)}</td>
+                    <td className="px-3 py-2">{formatMode(item.candidateType)}</td>
+                    <td className="px-3 py-2">{item.breakdown?.similarity ?? '—'}</td>
+                    <td className="px-3 py-2">{item.breakdown?.roleFit ?? '—'}</td>
+                    <td className="px-3 py-2">{item.breakdown?.output ?? '—'}</td>
+                    <td className="px-3 py-2">{item.breakdown?.affordability ?? '—'}</td>
+                    <td className="px-3 py-2">{item.breakdown?.ageUpside ?? '—'}</td>
+                    <td className="px-3 py-2">{item.source}</td>
+                    <td className="px-3 py-2">
+                      <button
+                        type="button"
+                        onClick={() => removeFromShortlist(item.shortlistKey)}
+                        className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </main>
   );

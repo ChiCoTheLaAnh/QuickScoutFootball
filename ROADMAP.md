@@ -74,7 +74,7 @@ Priority order: **Product Phase 4 — Scout Workflow UX** is the next default fo
 
 ## Medium Priority
 
-- [ ] Add candidate comparison/shortlist UX without auth
+- [x] Add candidate comparison/shortlist UX without auth
 - [x] Add smoke or E2E coverage for history and export
 
 ## Explicitly Out Of Scope Unless Requested
