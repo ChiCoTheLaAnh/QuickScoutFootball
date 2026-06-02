@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-**Product Phase 4 — Scout Workflow UX planning; production readiness and automated refresh validated**
+**Product Phase 4 — Scout Workflow UX high-priority tasks complete; production readiness and automated refresh validated**
 
 Data pipeline context (see [README.md](README.md)): **Phase 1 (Seed baseline)** is complete. **Phase 2 (Single provider sync)** is validated for API-Football against hosted Supabase.
 
@@ -63,12 +63,14 @@ Avoid:
 - Automated API-Football cron refresh calls the validated sync path and logs refresh summaries/failures
 - Automated refresh health tracks last success/failure, stale status, and emits alert-ready structured logs plus an authenticated health endpoint
 - Production cron refresh validation completed after deploy (`GET /api/cron/refresh` 200, followed by cron health smoke validation)
+- Recommendation history UI uses existing persisted recommendation runs
+- Recommendation run detail/replay view uses saved request and response payloads
+- CSV export is available for current results and saved run results
+- Playwright E2E covers the core recommendation flow plus history/detail/export
 
 ## In Progress
 
-- Recommendation history UI
-- Recommendation run detail/replay view
-- CSV export for candidate lists
+- None
 
 ## Not Started (This Phase Or Later)
 
@@ -104,10 +106,8 @@ The phase is complete when:
 
 Planned focus:
 
-- Recommendation history page or panel backed by `GET /api/recommendation-runs`
-- Recommendation run detail/replay view backed by `GET /api/recommendation-runs/[runKey]`
-- CSV export for current results and saved run results
-- E2E coverage for history/detail/export once implemented
+- Candidate comparison/shortlist UX without auth
+- Additional CI/CD hardening after production smoke observations
 
 **Data Phase 4 — Automated refresh** (see [README.md](README.md))
 

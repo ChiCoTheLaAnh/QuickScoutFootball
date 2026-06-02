@@ -68,14 +68,14 @@ Priority order: **Product Phase 4 — Scout Workflow UX** is the next default fo
 
 ## High Priority
 
-- [ ] Add recommendation run history view using existing `GET /api/recommendation-runs`
-- [ ] Add recommendation run detail view using existing `GET /api/recommendation-runs/[runKey]`
-- [ ] Add CSV export for current results and saved run results
+- [x] Add recommendation run history view using existing `GET /api/recommendation-runs`
+- [x] Add recommendation run detail view using existing `GET /api/recommendation-runs/[runKey]`
+- [x] Add CSV export for current results and saved run results
 
 ## Medium Priority
 
 - [ ] Add candidate comparison/shortlist UX without auth
-- [ ] Add smoke or E2E coverage for history and export
+- [x] Add smoke or E2E coverage for history and export
 
 ## Explicitly Out Of Scope Unless Requested
 

@@ -15,4 +15,22 @@ test('scout can search for a target player and see recommendations', async ({ pa
   await expect(page.getByRole('table')).toBeVisible();
   await expect(page.locator('tbody tr').first()).toBeVisible();
   await expect(page.getByText('Score / 100')).toBeVisible();
+
+  const currentDownloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export Current CSV' }).click();
+  const currentDownload = await currentDownloadPromise;
+  expect(currentDownload.suggestedFilename()).toBe('quickscout-current-results.csv');
+
+  await expect(page.getByRole('heading', { name: 'Run History' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Mohamed Salah' }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Open Run' }).first().click();
+
+  await expect(page.getByRole('heading', { name: 'Run Detail' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Replay Filters' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Run Replay' })).toBeVisible();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export Run CSV' }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toContain('results.csv');
 });
