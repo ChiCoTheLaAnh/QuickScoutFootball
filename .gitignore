@@ -5,6 +5,7 @@ playwright-report/
 test-results/
 .tmp/
 .env*
+.env.dbt.local
 .venv-dbt/
 analytics/target/
 analytics/logs/

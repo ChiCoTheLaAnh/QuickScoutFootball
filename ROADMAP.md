@@ -137,7 +137,7 @@ Aligned with [README.md](README.md) provider integration plan.
 - [x] Share deterministic key and team fallback macros across dimensions and fact
 - [x] Add grain, metric, row-count, foreign-key, and exact-schema tests
 - [x] Document local operation and the current-team fallback limitation
-- [ ] Validate `dbt debug` and two consecutive `dbt build` runs against hosted Supabase
+- [x] Validate `dbt debug` and two consecutive `dbt build` runs against hosted Supabase (`80/80` passed in both builds on 2026-08-07)
 
 ---
 

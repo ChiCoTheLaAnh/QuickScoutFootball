@@ -37,6 +37,30 @@ dbt creates these relations:
 
 `public.players` and `public.player_season_stats` remain application-owned sources. Do not rename or move them: the app and provider sync still access them directly.
 
+### Hosted validation (completed 2026-08-07)
+
+Analytics Phase 0 was validated against hosted Supabase through the SSL-enabled session pooler. `dbt debug` passed, followed by two consecutive idempotent `dbt build` runs. Each build passed all 6 models and 74 data tests (`80/80`).
+
+| Hosted metric | Result |
+|---|---:|
+| Staging views | 2 |
+| Mart tables | 4 |
+| Source players | 40 |
+| Source season-stat rows | 40 |
+| Staging player rows | 40 |
+| Staging season-stat rows | 40 |
+| Fact rows | 40 |
+| Player dimension rows | 40 |
+| Team dimension rows | 19 |
+| League dimension rows | 7 |
+| Providers | 2 |
+| Seasons | 2 |
+| Competition identities | 2 |
+
+Row preservation was exact: `40 staging rows = 40 fact rows`. Duplicate checks for `fact_player_season_key` and `source_stats_id` returned zero rows, and all fact keys resolved to their dimensions without nulls or orphans.
+
+![Hosted dbt lineage graph](docs/analytics/dbt-lineage.png)
+
 ### Run dbt locally
 
 dbt is a separate Python tool and is not installed through `npm`. Use Python 3.10 or newer:

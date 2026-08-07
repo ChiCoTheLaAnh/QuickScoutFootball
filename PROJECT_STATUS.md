@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-**Product Phase 4 — Scout Workflow UX core tasks complete; Data Phase 5 expanded provider coverage implemented; Analytics Phase 0 awaiting hosted validation**
+**Product Phase 4 — Scout Workflow UX core tasks complete; Data Phase 5 expanded provider coverage implemented; Analytics Phase 0 complete**
 
 Data pipeline context (see [README.md](README.md)): **Phase 1 (Seed baseline)** is complete. **Phase 2 (Single provider sync)** is validated for API-Football against hosted Supabase.
 
@@ -69,10 +69,11 @@ Avoid:
 - Playwright E2E covers the core recommendation flow plus history/detail/export and shortlist export
 - Browser-only shortlist/comparison UX works without auth or database migrations
 - API-Football sync supports multiple configured player URLs, pagination with a page cap, de-dupe, and coverage metadata
+- Analytics Phase 0 validated against hosted Supabase on 2026-08-07: `dbt debug` passed; two consecutive builds each passed 6 models and 74 tests (`80/80`); 2 staging views and 4 mart tables preserve all 40 season-stat rows
 
 ## In Progress
 
-- Analytics Phase 0 dbt models and tests are implemented locally; hosted Supabase `dbt debug` and two consecutive `dbt build` validations remain
+- No remaining Analytics Phase 0 work; hosted validation, metrics, and lineage proof are complete
 
 ## Not Started (This Phase Or Later)
 
@@ -85,7 +86,6 @@ Avoid:
 - None critical for local MVP development
 - None for Data Phase 2 or automated refresh validation
 - Expanded provider coverage requires production env configuration (`API_FOOTBALL_PLAYERS_URLS`) and operator validation before it changes live data volume
-- Analytics Phase 0 completion requires PostgreSQL connection credentials with read access to `public.*` and create access for the analytics schemas
 
 ---
 
@@ -119,10 +119,9 @@ Planned focus:
 
 - Configure expanded API-Football URL targets in production and validate larger sync counts
 
-**Analytics Phase 0 — dbt foundation** (see [README.md](README.md))
+**Analytics Phase 0 — complete** (see [README.md](README.md))
 
-- Run `dbt debug` and two consecutive `dbt build` validations against hosted Supabase
-- Mark the phase complete only after all dbt source, model, singular, and schema-location tests pass
+- Hosted validation and lineage documentation are complete; no additional analytics features are in Phase 0 scope
 
 ---
 
