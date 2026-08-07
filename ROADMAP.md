@@ -126,6 +126,21 @@ Aligned with [README.md](README.md) provider integration plan.
 
 ---
 
+# Analytics Pipeline
+
+## Phase 0 — dbt Analytics Foundation
+
+- [x] Keep `public.players` and `public.player_season_stats` as unchanged application-owned sources
+- [x] Add dbt Core/Postgres configuration with environment-based credentials
+- [x] Add staging views with normalized player and competition identities
+- [x] Add `dim_player`, `dim_team`, `dim_league`, and `fact_player_season`
+- [x] Share deterministic key and team fallback macros across dimensions and fact
+- [x] Add grain, metric, row-count, foreign-key, and exact-schema tests
+- [x] Document local operation and the current-team fallback limitation
+- [ ] Validate `dbt debug` and two consecutive `dbt build` runs against hosted Supabase
+
+---
+
 # Future Ideas
 
 - Scout watchlists and saved comparisons

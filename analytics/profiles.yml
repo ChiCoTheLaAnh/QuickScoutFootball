@@ -1,0 +1,13 @@
+quickscout_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DBT_HOST') }}"
+      port: "{{ env_var('DBT_PORT', '5432') | int }}"
+      user: "{{ env_var('DBT_USER') }}"
+      pass: "{{ env_var('DBT_PASSWORD') }}"
+      dbname: "{{ env_var('DBT_DBNAME', 'postgres') }}"
+      schema: analytics
+      threads: "{{ env_var('DBT_THREADS', '4') | int }}"
+      sslmode: "{{ env_var('DBT_SSLMODE', 'require') }}"

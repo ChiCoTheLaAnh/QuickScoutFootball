@@ -11,6 +11,71 @@ The goal is to provide a fast, explainable recommendation pipeline for scouting:
 - Persist recommendation job history for repeatability and analysis.
 - Keep the architecture lightweight while provider integrations mature.
 
+## Analytics architecture (dbt Phase 0)
+
+The application ingestion and recommendation paths remain unchanged. dbt reads the two existing PostgreSQL source tables after ingestion and builds an analytics-only star schema:
+
+```mermaid
+flowchart TD
+  provider[API-Football] --> ingestion[Existing Next.js ingestion]
+  ingestion --> sources["public.players + public.player_season_stats"]
+  sources --> staging[analytics_staging views]
+  staging --> dimensions["dim_player + dim_team + dim_league"]
+  staging --> fact[fact_player_season]
+  dimensions --> star[Analytics-ready star schema]
+  fact --> star
+```
+
+dbt creates these relations:
+
+- `analytics_staging.stg_players`
+- `analytics_staging.stg_player_season_stats`
+- `analytics_marts.dim_player`
+- `analytics_marts.dim_team`
+- `analytics_marts.dim_league`
+- `analytics_marts.fact_player_season`
+
+`public.players` and `public.player_season_stats` remain application-owned sources. Do not rename or move them: the app and provider sync still access them directly.
+
+### Run dbt locally
+
+dbt is a separate Python tool and is not installed through `npm`. Use Python 3.10 or newer:
+
+```bash
+python3.11 -m venv .venv-dbt
+source .venv-dbt/bin/activate
+python -m pip install -r analytics/requirements.txt
+```
+
+Copy the Postgres connection details from **Supabase Dashboard → Connect** and export them in the shell that will run dbt. Use a direct connection when available, or the session pooler on port `5432` when IPv4 is required.
+
+```bash
+export DBT_HOST=your-supabase-postgres-host
+export DBT_PORT=5432
+export DBT_USER=your-supabase-postgres-user
+export DBT_PASSWORD=your-database-password
+export DBT_DBNAME=postgres
+export DBT_THREADS=4
+export DBT_SSLMODE=require
+```
+
+The database user must be able to read `public.players` and `public.player_season_stats`, and create/update `analytics_staging` and `analytics_marts`.
+
+Run validation and build commands from the repository root:
+
+```bash
+dbt parse --project-dir analytics --profiles-dir analytics
+dbt debug --project-dir analytics --profiles-dir analytics
+dbt build --project-dir analytics --profiles-dir analytics
+dbt docs generate --project-dir analytics --profiles-dir analytics
+```
+
+Staging models are views and marts are tables. Tests enforce the normalized player-season-competition grain, exact output schema names, non-null dimension keys, referential integrity, and a one-to-one row count between staging stats and the fact.
+
+### Team history limitation
+
+`public.player_season_stats` has `team_provider_id` but no `team_name`. A historical team ID is retained in `dim_team`, but its name is null when that ID does not match the player's current team. When a stats row has no team ID, dbt falls back to the current team in `players`; after a transfer, that fallback may not represent the historical team. Phase 0 documents this limitation instead of changing the application source schema.
+
 ## Local setup
 
 1. Install dependencies:
