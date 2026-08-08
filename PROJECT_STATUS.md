@@ -97,7 +97,8 @@ Avoid:
 - None for Data Phase 2 or automated refresh validation
 - Free staged rollout is approved: cap 60, 6200ms request start pacing, one target per daily quota gate, and two passes over four or more quota windows each
 - Cron remains disabled until the final Bundesliga `78` proof; production provider/database secrets must be preserved through that proof
-- No current code blocker; each live target can still fail closed on changed paging, missing headers, insufficient daily quota, or the cron's 285-second internal deadline
+- Pass 1 Day 1 currently fails closed because API-Football intermittently omits all quota headers on a later page; two attempts made no hosted player/fact writes
+- Continue only when a target run receives parseable headers on every response; do not infer quota, weaken the gate, or repeatedly consume the free allowance in one window
 
 ---
 

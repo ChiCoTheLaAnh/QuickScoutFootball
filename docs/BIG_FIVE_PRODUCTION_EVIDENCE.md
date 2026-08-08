@@ -1,13 +1,13 @@
 # Big Five season 2024 production evidence
 
-Status: free staged implementation complete locally; deployment and Pass 1 pending. Historical season 2024 refresh is validation-only.
+Status: free staged implementation deployed; Pass 1 Day 1 is fail-closed on intermittent provider quota-header omissions. Historical season 2024 refresh is validation-only.
 
 ## Release identity
 
 | Evidence | Value |
 |---|---|
-| Implementation commit | `bb0ec83` (deployment packaging follow-up `a746661`) |
-| Canary deployment | `dpl_GZnq51WTH3D5tWuUgwwYK9ay3UJd` — READY at `quick-scout-football.vercel.app` |
+| Implementation commit | `37bf9dc` (free staged guardrails; earlier identity implementation `bb0ec83`) |
+| Canary deployment | `dpl_CaL9JRdzPZh1LPFoxioyuFpBFjdR` — READY at `quick-scout-football.vercel.app`; cron disabled |
 | Final deployment without cron | Pending |
 | Supabase migrations | `20260808000359_provider_sync_runs` and `20260808003758_provider_sync_runs_hardening` applied |
 
@@ -32,6 +32,7 @@ The local benchmark used the exact seed identity `seed:seed-mohamed-salah`. Prod
 |---|---|---|---|
 | Pre-backfill hosted baseline | N/A | 20 API-Football identities; 20 league-39 facts; zero canonical/fact duplicates, orphans, or out-of-scope facts | Recorded; not acceptance evidence |
 | Premier League 39 canary | `paging.total=57`; cap `50`; daily remaining before broader probe `99` | No writes; hosted counts remained 20 identities / 20 facts | Failed closed before pagination because the live total exceeds the approved cap |
+| Pass 1 Day 1 — league 39 | Cap `60`; 6200ms start pacing; live diagnostic showed daily `90/100`, minute `6/10`, pages `57` | Two attempts stopped after about 19s; hosted counts remained 20 identities / 20 facts | Provider intermittently omitted all four required quota headers on a later page; fail closed, no fallback quota inference |
 | Five-league probe | `39=57`, `140=53`, `135=52`, `78=38`, `61=46`; `S=246`; daily remaining after probe `94`; minute remaining `4` | Read-only; five page-one calls | Two-run gate requires `ceil(2 × 246 × 1.20) = 591`, so the live quota failed closed |
 | Full backfill 1 | Pending | Pending | Pending |
 | Full backfill 2 | Pending | Pending | Pending |
