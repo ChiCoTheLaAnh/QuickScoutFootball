@@ -72,11 +72,11 @@ Avoid:
 - Analytics Phase 0 validated against hosted Supabase on 2026-08-07: `dbt debug` passed; two consecutive builds each passed 6 models and 74 tests (`80/80`); 2 staging views and 4 mart tables preserve all 40 season-stat rows
 - Big Five ingestion filters every statistics block by exact league ID and season before multi-team aggregation
 - Canonical identity, target lookup/exclusion, and ranking tie-breaks use provider source plus provider player ID; legacy same-name ambiguity returns `409`
-- API-Football quota probes use actual page totals, 20% safety gates, fail-closed headers/page cap, minute pacing, and bounded retries
+- API-Football page-1 probes use actual page totals, complete fail-closed quota headers, 20% safety gates, cap 60, 6200ms pacing, and bounded retries; later missing headers use a monotonic conservative ledger
 - Provider writes are batched at 250 players and 500 facts; app reads use 500-row player cursors and 100-ID stat chunks with concurrency four
-- Persisted `provider_sync_runs` claims protect cron quota from duplicate/overlapping delivery; health reads persisted state
+- Persisted `provider_sync_runs` claims protect the global `apiFootball:2024` quota scope across manual and cron runs; lock losers make zero provider calls and health reads persisted state
 - Current merged tree passes 122 unit/integration tests (2 environment-gated skips), typecheck, lint, production build, exact-identity E2E, production-mode smoke, and 3+50 endpoint benchmarks
-- Hosted `provider_sync_runs` and hardening migrations are applied; table access is limited to service-role reads/writes and claim/finalize RPC execution
+- Hosted `provider_sync_runs`, hardening, and provider-season global-lock migrations are applied; table access is limited to service-role reads/writes and claim/finalize RPC execution
 - Free staged provider guardrails are implemented locally: 60-page cap, probe-inclusive per-target gates, 6200ms request-start pacing, remaining-page quota checks, and a 285-second cron deadline
 
 ## In Progress
@@ -97,8 +97,8 @@ Avoid:
 - None for Data Phase 2 or automated refresh validation
 - Free staged rollout is approved: cap 60, 6200ms request start pacing, one target per daily quota gate, and two passes over four or more quota windows each
 - Cron remains disabled until the final Bundesliga `78` proof; production provider/database secrets must be preserved through that proof
-- Pass 1 Day 1 currently fails closed because API-Football intermittently omits all quota headers on a later page; two attempts made no hosted player/fact writes
-- Continue only when a target run receives parseable headers on every response; do not infer quota, weaken the gate, or repeatedly consume the free allowance in one window
+- Two earlier Pass 1 Day 1 attempts failed closed when API-Football omitted later-page quota headers; they made no hosted player/fact writes
+- Conservative later-page accounting is now implemented and verified. Retry league 39 only through its normal page-1 probe in a confirmed new quota window; do not run a separate diagnostic probe or weaken the 20% gate
 
 ---
 

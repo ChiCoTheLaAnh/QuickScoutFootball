@@ -17,6 +17,7 @@ export interface ProviderSyncTarget {
   season: typeof API_FOOTBALL_BACKFILL_SEASON;
   leagueId: BigFiveLeagueId;
   targetKey: string;
+  lockScope: string;
   utcDate: string;
 }
 
@@ -25,6 +26,7 @@ export interface ProviderSyncRun {
   invocationKey: string;
   runKind: ProviderSyncRunKind;
   targetKey: string;
+  lockScope: string;
   utcDate: string;
   status: ProviderSyncRunStatus;
   lockToken: string;
@@ -41,6 +43,7 @@ export interface ClaimProviderSyncRunInput {
   invocationKey: string;
   runKind: ProviderSyncRunKind;
   targetKey: string;
+  lockScope: string;
   utcDate: string;
   lockToken: string;
 }
@@ -75,6 +78,7 @@ type ProviderSyncRunRow = {
   invocation_key: string;
   run_kind: ProviderSyncRunKind;
   target_key: string;
+  lock_scope: string;
   utc_date: string;
   status: ProviderSyncRunStatus;
   lock_token: string;
@@ -96,6 +100,7 @@ const PROVIDER_SYNC_RUN_SELECT = [
   'invocation_key',
   'run_kind',
   'target_key',
+  'lock_scope',
   'utc_date',
   'status',
   'lock_token',
@@ -127,6 +132,10 @@ export function getScheduledApiFootballTarget(now = new Date()): ProviderSyncTar
       API_FOOTBALL_PROVIDER,
       API_FOOTBALL_BACKFILL_SEASON,
       leagueId,
+    ),
+    lockScope: createProviderSyncLockScope(
+      API_FOOTBALL_PROVIDER,
+      API_FOOTBALL_BACKFILL_SEASON,
     ),
     utcDate,
   };
@@ -162,6 +171,16 @@ export function createProviderSyncTargetKey(
   return `${providerSource}:${season}:${leagueId}`;
 }
 
+export function createProviderSyncLockScope(
+  providerSource: string,
+  season: string,
+): string {
+  if (!providerSource.trim() || !season.trim()) {
+    throw new Error('Provider sync lock scope requires provider source and season');
+  }
+  return `${providerSource}:${season}`;
+}
+
 export async function claimProviderSyncRun(
   input: ClaimProviderSyncRunInput,
 ): Promise<ClaimProviderSyncRunResult> {
@@ -170,6 +189,7 @@ export async function claimProviderSyncRun(
     p_invocation_key: input.invocationKey,
     p_run_kind: input.runKind,
     p_target_key: input.targetKey,
+    p_lock_scope: input.lockScope,
     p_utc_date: input.utcDate,
     p_lock_token: input.lockToken,
   });
@@ -220,12 +240,16 @@ export async function runManualProviderSync<T extends object>(
     invocationKey,
     runKind: 'manual',
     targetKey,
+    lockScope: createProviderSyncLockScope(
+      API_FOOTBALL_PROVIDER,
+      API_FOOTBALL_BACKFILL_SEASON,
+    ),
     utcDate: toUtcDate(invokedAt),
     lockToken,
   });
 
   if (!claim.claimed) {
-    throw new Error('Random manual provider sync invocation key already exists');
+    throw new Error('Provider sync quota scope is already active');
   }
 
   let summary: T;
@@ -324,6 +348,7 @@ function fromRow(row: ProviderSyncRunRow): ProviderSyncRun {
     invocationKey: row.invocation_key,
     runKind: row.run_kind,
     targetKey: row.target_key,
+    lockScope: row.lock_scope,
     utcDate: row.utc_date,
     status: row.status,
     lockToken: row.lock_token,

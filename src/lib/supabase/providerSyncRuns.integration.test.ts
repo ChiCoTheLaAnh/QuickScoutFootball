@@ -15,23 +15,23 @@ const hasHostedSupabase = Boolean(
 );
 
 describe.skipIf(!hasHostedSupabase)('hosted provider sync run claims', () => {
-  it('atomically allows only one of two concurrent claims for the same invocation key', async () => {
-    const invocationKey = `integration:providerSyncRuns:${randomUUID()}`;
-    const targetKey = 'integration:apiFootball:2024:39';
+  it('atomically locks a provider-season scope and releases it after finalize', async () => {
+    const lockScope = `integration:apiFootball:2024:${randomUUID()}`;
     const utcDate = new Date().toISOString().slice(0, 10);
-    const inputs = [randomUUID(), randomUUID()].map((lockToken) => ({
-      invocationKey,
+    const inputs = ['39', '140'].map((leagueId) => ({
+      invocationKey: `integration:providerSyncRuns:${randomUUID()}`,
       runKind: 'manual' as const,
-      targetKey,
+      targetKey: `apiFootball:2024:${leagueId}`,
+      lockScope,
       utcDate,
-      lockToken,
+      lockToken: randomUUID(),
     }));
 
     const results = await Promise.all(inputs.map((input) => claimProviderSyncRun(input)));
     const claimedResults = results.filter((result) => result.claimed);
 
     await Promise.all(claimedResults.map((result) => finalizeProviderSyncRun({
-      invocationKey,
+      invocationKey: result.run.invocationKey,
       lockToken: result.run.lockToken,
       status: 'completed',
       summary: { integrationTest: true },
@@ -41,16 +41,20 @@ describe.skipIf(!hasHostedSupabase)('hosted provider sync run claims', () => {
     expect(results[0].run.id).toBe(results[1].run.id);
     expect(results.map((result) => result.claimed).sort()).toEqual([false, true]);
 
-    const duplicate = await claimProviderSyncRun({
-      ...inputs[0],
+    const afterFinalize = await claimProviderSyncRun({
+      invocationKey: `integration:providerSyncRuns:${randomUUID()}`,
+      runKind: 'manual',
+      targetKey: 'apiFootball:2024:135',
+      lockScope,
+      utcDate,
       lockToken: randomUUID(),
     });
-    expect(duplicate).toMatchObject({
-      claimed: false,
-      run: {
-        invocationKey,
-        status: 'completed',
-      },
-    });
+    expect(afterFinalize.claimed).toBe(true);
+    await expect(finalizeProviderSyncRun({
+      invocationKey: afterFinalize.run.invocationKey,
+      lockToken: afterFinalize.run.lockToken,
+      status: 'completed',
+      summary: { integrationTest: true, afterFinalize: true },
+    })).resolves.toBe(true);
   });
 });

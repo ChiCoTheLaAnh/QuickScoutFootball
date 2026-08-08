@@ -135,6 +135,7 @@ Aligned with [README.md](README.md) provider integration plan.
 - [x] Add canary/full audit, checksum, smoke, E2E, and 3+50 performance acceptance tooling
 - [x] Generate and apply the additive `provider_sync_runs` migration
 - [x] Add free staged per-target quota accounting, 6200ms pacing, cap 60, and the 285-second cron deadline
+- [x] Add conservative later-page quota ledger and atomic provider-season global lock
 - [ ] Deploy the canary release and configure all five production targets
 - [ ] Complete canary, probe, two full backfills, two dbt builds, hosted audits, and production performance evidence
 - [ ] Validate one scheduled cron plus same-day duplicate skip, then remove the cron schedule and performance secret

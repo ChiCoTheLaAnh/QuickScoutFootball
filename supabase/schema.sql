@@ -104,6 +104,7 @@ create table if not exists public.provider_sync_runs (
   invocation_key text not null,
   run_kind text not null check (run_kind in ('cron', 'manual')),
   target_key text not null,
+  lock_scope text not null,
   utc_date date not null,
   status text not null default 'running' check (status in ('running', 'completed', 'failed')),
   lock_token uuid not null,
@@ -117,6 +118,7 @@ create table if not exists public.provider_sync_runs (
   constraint provider_sync_runs_invocation_key_unique unique (invocation_key),
   constraint provider_sync_runs_invocation_key_not_blank check (btrim(invocation_key) <> ''),
   constraint provider_sync_runs_target_key_not_blank check (btrim(target_key) <> ''),
+  constraint provider_sync_runs_lock_scope_not_blank check (btrim(lock_scope) <> ''),
   constraint provider_sync_runs_completion_consistent check (
     (status = 'running' and completed_at is null)
     or (status in ('completed', 'failed') and completed_at is not null)
@@ -130,6 +132,9 @@ create index if not exists idx_provider_sync_runs_target
 create index if not exists idx_provider_sync_runs_running_lease
   on public.provider_sync_runs (lease_expires_at)
   where status = 'running';
+create unique index if not exists idx_provider_sync_runs_one_running_per_scope
+  on public.provider_sync_runs (lock_scope)
+  where status = 'running';
 
 alter table public.provider_sync_runs enable row level security;
 revoke all on table public.provider_sync_runs from public, anon, authenticated, service_role;
@@ -139,6 +144,7 @@ create or replace function public.claim_provider_sync_run(
   p_invocation_key text,
   p_run_kind text,
   p_target_key text,
+  p_lock_scope text,
   p_utc_date date,
   p_lock_token uuid
 )
@@ -148,6 +154,7 @@ returns table (
   invocation_key text,
   run_kind text,
   target_key text,
+  lock_scope text,
   utc_date date,
   status text,
   lock_token uuid,
@@ -170,6 +177,7 @@ begin
     invocation_key,
     run_kind,
     target_key,
+    lock_scope,
     utc_date,
     status,
     lock_token,
@@ -178,12 +186,13 @@ begin
     p_invocation_key,
     p_run_kind,
     p_target_key,
+    p_lock_scope,
     p_utc_date,
     'running',
     p_lock_token,
     now() + interval '10 minutes'
   )
-  on conflict on constraint provider_sync_runs_invocation_key_unique do nothing
+  on conflict do nothing
   returning run.id into claimed_id;
 
   if claimed_id is not null then
@@ -194,6 +203,7 @@ begin
       run.invocation_key,
       run.run_kind,
       run.target_key,
+      run.lock_scope,
       run.utc_date,
       run.status,
       run.lock_token,
@@ -214,6 +224,7 @@ begin
       run.invocation_key,
       run.run_kind,
       run.target_key,
+      run.lock_scope,
       run.utc_date,
       run.status,
       run.lock_token,
@@ -225,7 +236,10 @@ begin
       run.created_at,
       run.updated_at
     from public.provider_sync_runs as run
-    where run.invocation_key = p_invocation_key;
+    where run.invocation_key = p_invocation_key
+       or (run.lock_scope = p_lock_scope and run.status = 'running')
+    order by (run.invocation_key = p_invocation_key) desc, run.started_at desc
+    limit 1;
   end if;
 end;
 $$;
@@ -265,9 +279,9 @@ begin
 end;
 $$;
 
-revoke execute on function public.claim_provider_sync_run(text, text, text, date, uuid)
+revoke execute on function public.claim_provider_sync_run(text, text, text, text, date, uuid)
   from public, anon, authenticated;
-grant execute on function public.claim_provider_sync_run(text, text, text, date, uuid)
+grant execute on function public.claim_provider_sync_run(text, text, text, text, date, uuid)
   to service_role;
 revoke execute on function public.finalize_provider_sync_run(text, uuid, text, jsonb, jsonb)
   from public, anon, authenticated;

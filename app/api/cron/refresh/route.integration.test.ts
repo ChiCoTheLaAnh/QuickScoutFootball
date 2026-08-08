@@ -114,6 +114,7 @@ describe('GET /api/cron/refresh', () => {
       invocationKey: 'cron:apiFootball:2024:39:1970-01-01',
       runKind: 'cron',
       targetKey: 'apiFootball:2024:39',
+      lockScope: 'apiFootball:2024',
       utcDate: '1970-01-01',
       lockToken: expect.any(String),
     }));
@@ -234,6 +235,7 @@ function makeRun(input: ClaimProviderSyncRunInput): ProviderSyncRun {
     invocationKey: input.invocationKey,
     runKind: input.runKind,
     targetKey: input.targetKey,
+    lockScope: input.lockScope,
     utcDate: input.utcDate,
     status: 'running',
     lockToken: input.lockToken,

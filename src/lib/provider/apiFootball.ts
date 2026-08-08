@@ -74,6 +74,8 @@ export interface ApiFootballFetchResult {
   pagesExpected: number;
   requestsMade: number;
   retries: number;
+  quotaResponsesWithMissingHeaders: number;
+  quotaLedgerEstimatedResponses: number;
   durationMs: number;
   rowsFetched: number;
   playersWithoutTargetStats: number;
@@ -101,6 +103,8 @@ export interface ApiFootballProbeResult {
   pagesRequired: number;
   requestsMade: number;
   retries: number;
+  quotaResponsesWithMissingHeaders: number;
+  quotaLedgerEstimatedResponses: number;
   durationMs: number;
   skippedNoTargetStats: number;
   skippedInvalidIdentity: number;
@@ -143,6 +147,9 @@ type RequestState = {
   quota: ApiFootballQuotaSnapshot;
   requestsMade: number;
   retries: number;
+  quotaResponsesWithMissingHeaders: number;
+  quotaLedgerEstimatedResponses: number;
+  minuteExhaustedFromHeader: boolean;
 };
 
 type AggregatedStatisticFacts = {
@@ -195,7 +202,7 @@ export async function fetchApiFootballPlayerCoverage(
 
   const pagesExpected = targetCoverage.reduce((sum, target) => sum + target.totalPages, 0);
   assertCompleteQuotaHeaders(requestState.quota);
-  const probeQuotaGates = buildQuotaGates(requestState.quota, pagesExpected, probedTargets.length);
+  const probeQuotaGates = buildQuotaGates(requestState.quota, pagesExpected, requestState.requestsMade);
   const quotaRuns = resolveQuotaRuns(options.quotaRuns);
   const selectedGate = quotaRuns === 2 ? probeQuotaGates.twoRuns : probeQuotaGates.oneRun;
   if (selectedGate.allowed !== true) {
@@ -207,7 +214,14 @@ export async function fetchApiFootballPlayerCoverage(
   for (const { target, firstPage, coverage } of probedTargets) {
     mergePagePlayers(playersByKey, firstPage.players);
     for (let page = 2; page <= firstPage.totalPages; page += 1) {
-      const pageResult = await fetchApiFootballPlayersPage(target, page, requestState);
+      const requestsNeededToFinishTarget = firstPage.totalPages - page + 1;
+      assertRemainingDailyQuota(requestState.quota, requestsNeededToFinishTarget, target);
+      const pageResult = await fetchApiFootballPlayersPage(
+        target,
+        page,
+        requestState,
+        requestsNeededToFinishTarget,
+      );
       if (pageResult.totalPages !== firstPage.totalPages) {
         throw new Error(
           `API-Football paging total changed for league ${target.leagueId}: ${firstPage.totalPages} to ${pageResult.totalPages}`,
@@ -252,6 +266,8 @@ export async function fetchApiFootballPlayerCoverage(
     pagesExpected,
     requestsMade: requestState.requestsMade,
     retries: requestState.retries,
+    quotaResponsesWithMissingHeaders: requestState.quotaResponsesWithMissingHeaders,
+    quotaLedgerEstimatedResponses: requestState.quotaLedgerEstimatedResponses,
     durationMs: Math.max(0, Date.now() - startedAt),
     rowsFetched,
     playersWithoutTargetStats,
@@ -324,7 +340,9 @@ export async function probeApiFootballPlayerCoverage(
     quotaBefore: requireQuotaBefore(requestState),
     quotaAfter: { ...requestState.quota },
     quota: requestState.quota,
-    quotaGates: buildQuotaGates(requestState.quota, pagesRequired, targetCoverage.length),
+    quotaGates: buildQuotaGates(requestState.quota, pagesRequired, requestState.requestsMade),
+    quotaResponsesWithMissingHeaders: requestState.quotaResponsesWithMissingHeaders,
+    quotaLedgerEstimatedResponses: requestState.quotaLedgerEstimatedResponses,
   };
 }
 
@@ -582,6 +600,9 @@ function createRequestState(options: ApiFootballFetchOptions): RequestState {
     quota: {},
     requestsMade: 0,
     retries: 0,
+    quotaResponsesWithMissingHeaders: 0,
+    quotaLedgerEstimatedResponses: 0,
+    minuteExhaustedFromHeader: false,
   };
 }
 
@@ -589,6 +610,7 @@ async function fetchApiFootballPlayersPage(
   target: ApiFootballTarget,
   page: number,
   requestState: RequestState,
+  requestsNeededToFinishTarget = 0,
 ): Promise<ApiFootballPageResult> {
   const url = withPageParam(target.url, page);
   const apiKey = process.env.API_FOOTBALL_API_KEY?.trim();
@@ -596,7 +618,14 @@ async function fetchApiFootballPlayersPage(
     throw new Error('API_FOOTBALL_API_KEY is required for API-Football sync');
   }
 
-  const response = await fetchWithRetry(url, apiKey, requestState);
+  const response = await fetchWithRetry(
+    url,
+    apiKey,
+    requestState,
+    page === 1,
+    requestsNeededToFinishTarget,
+    target,
+  );
   const payload: unknown = await response.json();
   assertNoProviderErrors(payload);
 
@@ -650,12 +679,16 @@ async function fetchWithRetry(
   url: string,
   apiKey: string,
   state: RequestState,
+  requireCompleteQuotaHeaders: boolean,
+  requestsNeededToFinishTarget: number,
+  target: ApiFootballTarget,
 ): Promise<Response> {
   const maxAttempts = MAX_REQUEST_RETRIES + 1;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     await paceRequest(state);
     assertBeforeDeadline(state);
     state.lastRequestStartedAt = Date.now();
+    state.requestsMade += 1;
     let response: Response;
     try {
       response = await fetch(url, {
@@ -671,16 +704,17 @@ async function fetchWithRetry(
       }
       throw error;
     }
-    state.requestsMade += 1;
-    const responseQuota = updateQuotaSnapshot(state, response.headers);
+    reconcileQuotaSnapshot(
+      state,
+      response.headers,
+      requireCompleteQuotaHeaders,
+    );
 
     if (response.ok) {
-      assertCompleteQuotaHeaders(responseQuota);
-      if (state.quotaBefore === null) state.quotaBefore = { ...responseQuota };
       return response;
     }
 
-    if (response.status === 429 && responseQuota.dailyRemaining === 0) {
+    if (state.quota.dailyRemaining === 0) {
       throw new Error(`API-Football daily quota exhausted after ${attempt} attempt(s)`);
     }
 
@@ -688,6 +722,8 @@ async function fetchWithRetry(
     if (!retryable || attempt === maxAttempts) {
       throw new Error(`API-Football request failed with status ${response.status} after ${attempt} attempt(s)`);
     }
+
+    assertRemainingDailyQuota(state.quota, requestsNeededToFinishTarget, target);
 
     state.retries += 1;
     await state.wait(retryDelayMs(response.headers, attempt));
@@ -701,7 +737,7 @@ async function paceRequest(state: RequestState): Promise<void> {
   const minutePacingMs = state.quota.minuteLimit && state.quota.minuteLimit > 0
     ? Math.ceil(60_000 / state.quota.minuteLimit)
     : 0;
-  const exhaustedMinuteWindowMs = state.quota.minuteRemaining === 0 ? 60_000 : 0;
+  const exhaustedMinuteWindowMs = state.minuteExhaustedFromHeader ? 60_000 : 0;
   const pacingMs = Math.max(
     state.configuredPacingMs,
     minutePacingMs,
@@ -728,10 +764,45 @@ function retryDelayMs(headers: Headers, attempt: number): number {
   return 1_000 * (2 ** (attempt - 1));
 }
 
-function updateQuotaSnapshot(
+function reconcileQuotaSnapshot(
   state: RequestState,
   headers: Headers,
+  requireComplete: boolean,
 ): ApiFootballQuotaSnapshot {
+  const responseQuota = readQuotaSnapshot(headers);
+  const missingHeaders = getMissingQuotaHeaders(responseQuota);
+
+  if (state.quotaBefore === null || requireComplete) {
+    assertCompleteQuotaHeaders(responseQuota);
+  }
+
+  if (state.quotaBefore === null) {
+    state.quotaBefore = { ...responseQuota };
+    state.quota = { ...responseQuota };
+    state.minuteExhaustedFromHeader = responseQuota.minuteRemaining === 0;
+    return responseQuota;
+  }
+
+  if (missingHeaders.length > 0) {
+    state.quotaResponsesWithMissingHeaders += 1;
+    state.quotaLedgerEstimatedResponses += 1;
+  }
+
+  const predictedDailyRemaining = decrementQuota(state.quota.dailyRemaining);
+  const predictedMinuteRemaining = decrementQuota(state.quota.minuteRemaining);
+  state.quota = {
+    dailyLimit: conservativeLimit(state.quota.dailyLimit, responseQuota.dailyLimit),
+    dailyRemaining: responseQuota.dailyRemaining === undefined
+      ? predictedDailyRemaining
+      : conservativeRemaining(predictedDailyRemaining, responseQuota.dailyRemaining),
+    minuteLimit: conservativeLimit(state.quota.minuteLimit, responseQuota.minuteLimit),
+    minuteRemaining: responseQuota.minuteRemaining ?? predictedMinuteRemaining,
+  };
+  state.minuteExhaustedFromHeader = responseQuota.minuteRemaining === 0;
+  return responseQuota;
+}
+
+function readQuotaSnapshot(headers: Headers): ApiFootballQuotaSnapshot {
   const responseQuota: ApiFootballQuotaSnapshot = {};
   const dailyLimit = readHeaderNumber(headers, 'x-ratelimit-requests-limit');
   const dailyRemaining = readHeaderNumber(headers, 'x-ratelimit-requests-remaining');
@@ -741,8 +812,21 @@ function updateQuotaSnapshot(
   if (dailyRemaining !== undefined) responseQuota.dailyRemaining = dailyRemaining;
   if (minuteLimit !== undefined) responseQuota.minuteLimit = minuteLimit;
   if (minuteRemaining !== undefined) responseQuota.minuteRemaining = minuteRemaining;
-  Object.assign(state.quota, responseQuota);
   return responseQuota;
+}
+
+function decrementQuota(value: number | undefined): number | undefined {
+  return value === undefined ? undefined : Math.max(0, value - 1);
+}
+
+function conservativeLimit(current: number | undefined, reported: number | undefined): number | undefined {
+  if (current === undefined) return reported;
+  if (reported === undefined) return current;
+  return Math.min(current, reported);
+}
+
+function conservativeRemaining(predicted: number | undefined, reported: number): number {
+  return predicted === undefined ? reported : Math.min(predicted, reported);
 }
 
 function readHeaderNumber(headers: Headers | undefined, name: string): number | undefined {
@@ -831,17 +915,21 @@ function isDeadlineError(error: unknown): boolean {
 }
 
 function assertCompleteQuotaHeaders(quota: ApiFootballQuotaSnapshot): void {
-  const missing = [
+  const missing = getMissingQuotaHeaders(quota);
+  if (missing.length > 0) {
+    throw new Error(`API-Football quota headers missing: ${missing.join(',')}`);
+  }
+}
+
+function getMissingQuotaHeaders(quota: ApiFootballQuotaSnapshot): string[] {
+  return [
     ['x-ratelimit-requests-limit', quota.dailyLimit],
     ['x-ratelimit-requests-remaining', quota.dailyRemaining],
     ['x-ratelimit-limit', quota.minuteLimit],
     ['x-ratelimit-remaining', quota.minuteRemaining],
   ]
     .filter(([, value]) => value === undefined)
-    .map(([header]) => header);
-  if (missing.length > 0) {
-    throw new Error(`API-Football quota headers missing: ${missing.join(',')}`);
-  }
+    .map(([header]) => String(header));
 }
 
 function requireQuotaBefore(state: RequestState): ApiFootballQuotaSnapshot {

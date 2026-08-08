@@ -6,6 +6,7 @@ import {
   createApiFootballManualTargetKey,
   createCronInvocationKey,
   createManualInvocationKey,
+  createProviderSyncLockScope,
   finalizeProviderSyncRun,
   getCronProviderSyncHealthRuns,
   getScheduledApiFootballTarget,
@@ -24,6 +25,7 @@ const persistedRow = {
   invocation_key: 'cron:apiFootball:2024:39:1970-01-01',
   run_kind: 'cron' as const,
   target_key: 'apiFootball:2024:39',
+  lock_scope: 'apiFootball:2024',
   utc_date: '1970-01-01',
   status: 'running' as const,
   lock_token: '11111111-1111-4111-8111-111111111111',
@@ -63,6 +65,7 @@ describe('provider sync run scheduling', () => {
     const target = getScheduledApiFootballTarget(new Date('1970-01-01T12:00:00.000Z'));
 
     expect(target.targetKey).toBe('apiFootball:2024:39');
+    expect(target.lockScope).toBe('apiFootball:2024');
     expect(createCronInvocationKey(target)).toBe('cron:apiFootball:2024:39:1970-01-01');
 
     const firstManualKey = createManualInvocationKey(target.targetKey);
@@ -75,6 +78,7 @@ describe('provider sync run scheduling', () => {
     expect(createApiFootballManualTargetKey(['39'])).toBe('apiFootball:2024:39');
     expect(createApiFootballManualTargetKey()).toBe('apiFootball:2024:39,140,135,78,61');
     expect(() => createApiFootballManualTargetKey([])).toThrow('at least one target league');
+    expect(createProviderSyncLockScope('apiFootball', '2024')).toBe('apiFootball:2024');
   });
 });
 
@@ -90,6 +94,7 @@ describe('provider sync run persistence', () => {
       invocationKey: persistedRow.invocation_key,
       runKind: 'cron',
       targetKey: persistedRow.target_key,
+      lockScope: persistedRow.lock_scope,
       utcDate: persistedRow.utc_date,
       lockToken: persistedRow.lock_token,
     })).resolves.toMatchObject({
@@ -105,6 +110,7 @@ describe('provider sync run persistence', () => {
       p_invocation_key: persistedRow.invocation_key,
       p_run_kind: 'cron',
       p_target_key: persistedRow.target_key,
+      p_lock_scope: persistedRow.lock_scope,
       p_utc_date: persistedRow.utc_date,
       p_lock_token: persistedRow.lock_token,
     });
@@ -127,6 +133,7 @@ describe('provider sync run persistence', () => {
       invocationKey: persistedRow.invocation_key,
       runKind: 'cron',
       targetKey: persistedRow.target_key,
+      lockScope: persistedRow.lock_scope,
       utcDate: persistedRow.utc_date,
       lockToken: '22222222-2222-4222-8222-222222222222',
     });
@@ -191,6 +198,7 @@ describe('provider sync run persistence', () => {
       invocationKey: persistedRow.invocation_key,
       runKind: 'cron',
       targetKey: persistedRow.target_key,
+      lockScope: persistedRow.lock_scope,
       utcDate: persistedRow.utc_date,
       lockToken: persistedRow.lock_token,
     })).rejects.toThrow('SUPABASE_SERVICE_ROLE_KEY is required');
@@ -233,6 +241,27 @@ describe('provider sync run persistence', () => {
     expect(rpc.mock.invocationCallOrder[0]).toBeLessThan(sync.mock.invocationCallOrder[0]);
   });
 
+  it('makes zero provider calls when another target holds the provider-season scope', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{ claimed: false, ...persistedRow }],
+      error: null,
+    });
+    mockedCreateServerSupabaseClient.mockReturnValue({ rpc } as never);
+    const sync = vi.fn().mockResolvedValue({ providerSource: 'apiFootball', fetched: 20 });
+
+    await expect(runManualProviderSync(
+      createApiFootballManualTargetKey(['140']),
+      sync,
+      new Date('2026-01-01T01:00:00.000Z'),
+    )).rejects.toThrow('Provider sync quota scope is already active');
+
+    expect(sync).not.toHaveBeenCalled();
+    expect(rpc).toHaveBeenCalledWith('claim_provider_sync_run', expect.objectContaining({
+      p_target_key: 'apiFootball:2024:140',
+      p_lock_scope: 'apiFootball:2024',
+    }));
+  });
+
   it('finalizes a claimed manual run as failed when its sync callback rejects', async () => {
     const rpc = createManualRpc();
     mockedCreateServerSupabaseClient.mockReturnValue({ rpc } as never);
@@ -264,6 +293,7 @@ function createManualRpc() {
           invocation_key: args.p_invocation_key,
           run_kind: args.p_run_kind,
           target_key: args.p_target_key,
+          lock_scope: args.p_lock_scope,
           utc_date: args.p_utc_date,
           lock_token: args.p_lock_token,
         }],

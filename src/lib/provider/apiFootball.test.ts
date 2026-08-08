@@ -92,6 +92,19 @@ function response(
   } as Response;
 }
 
+function responseWithExactHeaders(
+  payload: unknown,
+  status = 200,
+  headers: Record<string, string> = {},
+): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    headers: new Headers(headers),
+    json: async () => payload,
+  } as Response;
+}
+
 const aggregateRaw: ProviderPlayerRaw = {
   provider: 'apiFootball',
   sourceId: '306',
@@ -381,6 +394,130 @@ describe('API-Football target, paging, retry, and quota behavior', () => {
     });
   });
 
+  it('estimates a conservative ledger when all quota headers are missing after the probe', async () => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(response(
+        pagePayload([playerRow(1, [statisticBlock()])], 1, 2),
+        200,
+        {
+          'x-ratelimit-requests-remaining': '99',
+          'x-ratelimit-remaining': '9',
+        },
+      ))
+      .mockResolvedValueOnce(responseWithExactHeaders(
+        pagePayload([playerRow(2, [statisticBlock()])], 2, 2),
+      )));
+
+    const result = await fetchApiFootballPlayerCoverage({ wait: noWait });
+
+    expect(result.quotaAfter).toMatchObject({
+      dailyLimit: 7500,
+      dailyRemaining: 98,
+      minuteLimit: 300,
+      minuteRemaining: 8,
+    });
+    expect(result.quotaResponsesWithMissingHeaders).toBe(1);
+    expect(result.quotaLedgerEstimatedResponses).toBe(1);
+  });
+
+  it('keeps confirmed limits and lowers the daily ledger when partial headers return', async () => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(response(
+        pagePayload([playerRow(1, [statisticBlock()])], 1, 2),
+        200,
+        { 'x-ratelimit-requests-remaining': '99', 'x-ratelimit-remaining': '9' },
+      ))
+      .mockResolvedValueOnce(responseWithExactHeaders(
+        pagePayload([playerRow(2, [statisticBlock()])], 2, 2),
+        200,
+        { 'x-ratelimit-requests-remaining': '50' },
+      )));
+
+    const result = await fetchApiFootballPlayerCoverage({ wait: noWait });
+
+    expect(result.quotaAfter).toEqual({
+      dailyLimit: 7500,
+      dailyRemaining: 50,
+      minuteLimit: 300,
+      minuteRemaining: 8,
+    });
+    expect(result.quotaResponsesWithMissingHeaders).toBe(1);
+  });
+
+  it('charges every later retry attempt to the conservative ledger', async () => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(response(
+        pagePayload([playerRow(1, [statisticBlock()])], 1, 2),
+        200,
+        { 'x-ratelimit-requests-remaining': '99', 'x-ratelimit-remaining': '9' },
+      ))
+      .mockResolvedValueOnce(responseWithExactHeaders({}, 503))
+      .mockResolvedValueOnce(responseWithExactHeaders(
+        pagePayload([playerRow(2, [statisticBlock()])], 2, 2),
+      )));
+
+    const result = await fetchApiFootballPlayerCoverage({ wait: noWait });
+
+    expect(result).toMatchObject({
+      requestsMade: 3,
+      retries: 1,
+      quotaResponsesWithMissingHeaders: 2,
+      quotaLedgerEstimatedResponses: 2,
+      quotaAfter: { dailyRemaining: 97, minuteRemaining: 7 },
+    });
+  });
+
+  it('stops before a retry when the reconciled ledger cannot finish the target', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response(
+        pagePayload([playerRow(1, [statisticBlock()])], 1, 3),
+        200,
+        { 'x-ratelimit-requests-remaining': '4' },
+      ))
+      .mockResolvedValueOnce(response({}, 503, {
+        'x-ratelimit-requests-remaining': '1',
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchApiFootballPlayerCoverage({ wait: noWait }))
+      .rejects.toThrow('daily quota cannot finish league 39: 2 page(s) remain, 1 request(s) available');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not turn a synthetic minute zero into a 60-second exhausted-window wait', async () => {
+    let clock = 1_000;
+    const starts: number[] = [];
+    const now = vi.spyOn(Date, 'now').mockImplementation(() => clock);
+    const wait = vi.fn(async (milliseconds: number) => {
+      clock += milliseconds;
+    });
+    vi.stubGlobal('fetch', vi.fn()
+      .mockImplementationOnce(async () => {
+        starts.push(Date.now());
+        return response(
+          pagePayload([playerRow(1, [statisticBlock()])], 1, 3),
+          200,
+          { 'x-ratelimit-requests-remaining': '99', 'x-ratelimit-remaining': '1' },
+        );
+      })
+      .mockImplementationOnce(async () => {
+        starts.push(Date.now());
+        return responseWithExactHeaders(pagePayload([playerRow(2, [statisticBlock()])], 2, 3));
+      })
+      .mockImplementationOnce(async () => {
+        starts.push(Date.now());
+        return responseWithExactHeaders(pagePayload([playerRow(3, [statisticBlock()])], 3, 3));
+      }));
+
+    try {
+      await fetchApiFootballPlayerCoverage({ wait });
+      expect(starts).toEqual([1_000, 7_200, 13_400]);
+      expect(wait.mock.calls.map(([milliseconds]) => milliseconds)).toEqual([6_200, 6_200]);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
   it('waits a full minute window before continuing when minute quota is exhausted', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(response(
@@ -560,6 +697,43 @@ describe('API-Football target, paging, retry, and quota behavior', () => {
 
     await expect(fetchApiFootballPlayerCoverage({ pacingMs: 0, wait: noWait }))
       .rejects.toThrow('quota headers missing');
+  });
+
+  it('fails closed on a headerless retryable response before the probe succeeds', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(responseWithExactHeaders({}, 503));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchApiFootballPlayerCoverage({ wait: noWait }))
+      .rejects.toThrow('quota headers missing');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('requires complete retry headers for every target page-one probe', async () => {
+    delete process.env.API_FOOTBALL_PLAYERS_URL;
+    process.env.API_FOOTBALL_PLAYERS_URLS = [targetUrl('39'), targetUrl('140')].join(',');
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response(pagePayload([playerRow(1, [statisticBlock()])])))
+      .mockResolvedValueOnce(responseWithExactHeaders({}, 503));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchApiFootballPlayerCoverage({ wait: noWait }))
+      .rejects.toThrow('quota headers missing');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('counts probe retries in the buffered quota gate', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response({}, 503, { 'x-ratelimit-requests-remaining': '67' }))
+      .mockResolvedValueOnce(response(
+        pagePayload([playerRow(1, [statisticBlock()])], 1, 57),
+        200,
+        { 'x-ratelimit-requests-remaining': '66' },
+      ));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchApiFootballPlayerCoverage({ wait: noWait }))
+      .rejects.toThrow('requires 69, remaining 66 after 2 probe(s)');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('validates quota headers independently on every selected target response', async () => {

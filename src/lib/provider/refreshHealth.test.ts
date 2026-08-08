@@ -195,5 +195,6 @@ function makeRun(overrides: Partial<ProviderSyncRun> = {}): ProviderSyncRun {
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
+    lockScope: overrides.lockScope ?? 'apiFootball:2024',
   };
 }

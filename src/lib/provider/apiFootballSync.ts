@@ -27,6 +27,8 @@ export interface ProviderSyncSummary {
   pagesExpected: number;
   requestsMade: number;
   retries: number;
+  quotaResponsesWithMissingHeaders: number;
+  quotaLedgerEstimatedResponses: number;
   durationMs: number;
   providerFetchDurationMs: number;
   rowsFetched: number;
@@ -78,6 +80,8 @@ export async function syncApiFootballPlayers(
     pagesExpected: fetchResult.pagesExpected,
     requestsMade: fetchResult.requestsMade,
     retries: fetchResult.retries,
+    quotaResponsesWithMissingHeaders: fetchResult.quotaResponsesWithMissingHeaders,
+    quotaLedgerEstimatedResponses: fetchResult.quotaLedgerEstimatedResponses,
     durationMs: Math.max(fetchResult.durationMs, Date.now() - startedAt),
     providerFetchDurationMs: fetchResult.durationMs,
     rowsFetched: fetchResult.rowsFetched,

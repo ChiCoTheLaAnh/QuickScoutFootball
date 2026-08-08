@@ -53,6 +53,7 @@ export async function GET(req: Request) {
       invocationKey,
       runKind: 'cron',
       targetKey: target.targetKey,
+      lockScope: target.lockScope,
       utcDate: target.utcDate,
       lockToken,
     });

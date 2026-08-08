@@ -74,6 +74,8 @@ describe('syncApiFootballPlayers', () => {
       pagesExpected: 2,
       requestsMade: 3,
       retries: 1,
+      quotaResponsesWithMissingHeaders: 1,
+      quotaLedgerEstimatedResponses: 1,
       durationMs: 1234,
       rowsFetched: 40,
       playersWithoutTargetStats: 2,
