@@ -1,6 +1,6 @@
 # Big Five season 2024 production evidence
 
-Status: rollout in progress. Historical season 2024 refresh is validation-only.
+Status: rollout blocked by live provider page totals and daily quota. Historical season 2024 refresh is validation-only.
 
 ## Release identity
 
@@ -31,8 +31,8 @@ The local benchmark used the exact seed identity `seed:seed-mohamed-salah`. Prod
 | Step | Pages / quota | Rows / coverage | Result |
 |---|---|---|---|
 | Pre-backfill hosted baseline | N/A | 20 API-Football identities; 20 league-39 facts; zero canonical/fact duplicates, orphans, or out-of-scope facts | Recorded; not acceptance evidence |
-| Premier League 39 canary | Pending | Pending | Pending |
-| Five-league probe | Pending | Pending | Pending |
+| Premier League 39 canary | `paging.total=57`; cap `50`; daily remaining before broader probe `99` | No writes; hosted counts remained 20 identities / 20 facts | Failed closed before pagination because the live total exceeds the approved cap |
+| Five-league probe | `39=57`, `140=53`, `135=52`, `78=38`, `61=46`; `S=246`; daily remaining after probe `94`; minute remaining `4` | Read-only; five page-one calls | Two-run gate requires `ceil(2 × 246 × 1.20) = 591`, so the live quota failed closed |
 | Full backfill 1 | Pending | Pending | Pending |
 | Full backfill 2 | Pending | Pending | Pending |
 
@@ -75,3 +75,5 @@ The local benchmark used the exact seed identity `seed:seed-mohamed-salah`. Prod
 - API-Football season `2024` is historical and must not remain on a recurring refresh schedule.
 - Missing market value, xG, and xA remain null; they are not synthesized.
 - No cross-provider reconciliation is performed by name. Same-name provider identities remain distinct and are reported by the audit.
+- The live provider account exposed roughly a 100-request daily allowance, not enough for the required 591-request two-run gate. The rollout cannot continue until the provider raises that real header allowance.
+- Live Premier League, La Liga, and Serie A totals exceed the approved 50-page cap. Raising the cap to at least 57 (preferably 60) requires an explicit rollout-plan correction; no truncation was performed.

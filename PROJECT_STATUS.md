@@ -94,7 +94,9 @@ Avoid:
 
 - None critical for local MVP development
 - None for Data Phase 2 or automated refresh validation
-- Production rollout requires exact `API_FOOTBALL_PLAYERS_URLS`, provider quota, and deploy access before it changes live data volume
+- Production rollout is fail-closed: live page totals are `39=57`, `140=53`, `135=52`, `78=38`, `61=46`, so three leagues exceed the approved cap of 50
+- The five-league total is 246 pages and the two-run gate requires 591 remaining daily requests; the live provider header reported only 94 after the read-only probe
+- Continue only after the real daily allowance is upgraded and the user explicitly approves raising the per-league page cap to at least 57; no backfill rows have been written
 
 ---
 
