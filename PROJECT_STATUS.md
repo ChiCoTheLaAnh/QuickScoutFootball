@@ -77,11 +77,12 @@ Avoid:
 - Persisted `provider_sync_runs` claims protect cron quota from duplicate/overlapping delivery; health reads persisted state
 - Current merged tree passes 122 unit/integration tests (2 environment-gated skips), typecheck, lint, production build, exact-identity E2E, production-mode smoke, and 3+50 endpoint benchmarks
 - Hosted `provider_sync_runs` and hardening migrations are applied; table access is limited to service-role reads/writes and claim/finalize RPC execution
+- Free staged provider guardrails are implemented locally: 60-page cap, probe-inclusive per-target gates, 6200ms request-start pacing, remaining-page quota checks, and a 285-second cron deadline
 
 ## In Progress
 
-- Deploy the Big Five canary release and configure the exact five season-2024 provider targets
-- Run the approved canary → probe → two full backfills → two dbt builds → production acceptance sequence
+- Deploy the cron-off free staged release with the exact five season-2024 provider targets preserved
+- Run two local staged passes across daily quota windows, followed by two dbt builds and production acceptance
 - Capture one scheduled cron/duplicate/health proof, then remove the schedule and temporary performance secret
 
 ## Not Started (This Phase Or Later)
@@ -94,9 +95,9 @@ Avoid:
 
 - None critical for local MVP development
 - None for Data Phase 2 or automated refresh validation
-- Production rollout is fail-closed: live page totals are `39=57`, `140=53`, `135=52`, `78=38`, `61=46`, so three leagues exceed the approved cap of 50
-- The five-league total is 246 pages and the two-run gate requires 591 remaining daily requests; the live provider header reported only 94 after the read-only probe
-- Continue only after the real daily allowance is upgraded and the user explicitly approves raising the per-league page cap to at least 57; no backfill rows have been written
+- Free staged rollout is approved: cap 60, 6200ms request start pacing, one target per daily quota gate, and two passes over four or more quota windows each
+- Cron remains disabled until the final Bundesliga `78` proof; production provider/database secrets must be preserved through that proof
+- No current code blocker; each live target can still fail closed on changed paging, missing headers, insufficient daily quota, or the cron's 285-second internal deadline
 
 ---
 

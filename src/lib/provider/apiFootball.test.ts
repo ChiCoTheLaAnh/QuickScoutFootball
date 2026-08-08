@@ -406,6 +406,96 @@ describe('API-Football target, paging, retry, and quota behavior', () => {
     }
   });
 
+  it('enforces 6200ms request start-to-start pacing', async () => {
+    let clock = 1_000;
+    const starts: number[] = [];
+    const now = vi.spyOn(Date, 'now').mockImplementation(() => clock);
+    const wait = vi.fn(async (milliseconds: number) => {
+      clock += milliseconds;
+    });
+    vi.stubGlobal('fetch', vi.fn()
+      .mockImplementationOnce(async () => {
+        starts.push(Date.now());
+        return response(pagePayload([playerRow(1, [statisticBlock()])], 1, 2));
+      })
+      .mockImplementationOnce(async () => {
+        starts.push(Date.now());
+        return response(pagePayload([playerRow(2, [statisticBlock()])], 2, 2));
+      }));
+
+    try {
+      await fetchApiFootballPlayerCoverage({ pacingMs: 0, wait });
+      expect(starts).toEqual([1_000, 7_200]);
+      expect(wait).toHaveBeenCalledWith(6_200);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it('enforces start-to-start pacing across retries', async () => {
+    let clock = 1_000;
+    const starts: number[] = [];
+    const now = vi.spyOn(Date, 'now').mockImplementation(() => clock);
+    const wait = vi.fn(async (milliseconds: number) => {
+      clock += milliseconds;
+    });
+    vi.stubGlobal('fetch', vi.fn()
+      .mockImplementationOnce(async () => {
+        starts.push(Date.now());
+        return response({}, 503);
+      })
+      .mockImplementationOnce(async () => {
+        starts.push(Date.now());
+        return response(pagePayload([playerRow(1, [statisticBlock()])]));
+      }));
+
+    try {
+      await fetchApiFootballPlayerCoverage({ wait });
+      expect(starts).toEqual([1_000, 7_200]);
+      expect(wait.mock.calls.map(([milliseconds]) => milliseconds)).toEqual([1_000, 5_200]);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it('stops before a request that cannot start within the internal deadline', async () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1_000);
+    const fetchMock = vi.fn().mockResolvedValue(
+      response(pagePayload([playerRow(1, [statisticBlock()])], 1, 2)),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      await expect(fetchApiFootballPlayerCoverage({
+        deadlineAtMs: 7_000,
+        wait: noWait,
+      })).rejects.toThrow('internal deadline exceeded before next request');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it('maps an in-flight deadline abort to a stable provider error', async () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1_000);
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      expect(init?.signal).toBeInstanceOf(AbortSignal);
+      const error = new Error('timed out');
+      error.name = 'TimeoutError';
+      throw error;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      await expect(fetchApiFootballPlayerCoverage({
+        deadlineAtMs: 10_000,
+        wait: noWait,
+      })).rejects.toThrow('API-Football internal deadline exceeded');
+    } finally {
+      now.mockRestore();
+    }
+  });
+
   it('probes page one for every selected target before fetching later pages', async () => {
     delete process.env.API_FOOTBALL_PLAYERS_URL;
     process.env.API_FOOTBALL_PLAYERS_URLS = [targetUrl('39'), targetUrl('140')].join(',');
@@ -431,13 +521,32 @@ describe('API-Football target, paging, retry, and quota behavior', () => {
     const fetchMock = vi.fn().mockResolvedValue(response(
       pagePayload([playerRow(1, [statisticBlock()])], 1, 2),
       200,
-      { 'x-ratelimit-requests-remaining': '2' },
+      { 'x-ratelimit-requests-remaining': '1' },
     ));
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(fetchApiFootballPlayerCoverage({ pacingMs: 0, wait: noWait }))
-      .rejects.toThrow('quota gate blocked 1 run(s): requires 3, remaining 2');
+      .rejects.toThrow('quota gate blocked 1 run(s): requires 3, remaining 1 after 1 probe(s)');
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails before the next page when retries consume the remaining daily quota', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response(
+        pagePayload([playerRow(1, [statisticBlock()])], 1, 3),
+        200,
+        { 'x-ratelimit-requests-remaining': '5' },
+      ))
+      .mockResolvedValueOnce(response(
+        pagePayload([playerRow(2, [statisticBlock()])], 2, 3),
+        200,
+        { 'x-ratelimit-requests-remaining': '0' },
+      ));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchApiFootballPlayerCoverage({ pacingMs: 0, wait: noWait }))
+      .rejects.toThrow('daily quota cannot finish league 39: 1 page(s) remain, 0 request(s) available');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('fails closed when required quota headers are missing', async () => {
@@ -533,11 +642,11 @@ describe('API-Football target, paging, retry, and quota behavior', () => {
 
   it('fails closed when provider paging exceeds the hard cap', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-      response(pagePayload([playerRow(1, [statisticBlock()])], 1, 51)),
+      response(pagePayload([playerRow(1, [statisticBlock()])], 1, 61)),
     ));
 
     await expect(fetchApiFootballPlayerCoverage({ pacingMs: 0, wait: noWait }))
-      .rejects.toThrow('exceeding fail-closed cap 50');
+      .rejects.toThrow('exceeding fail-closed cap 60');
   });
 
   it('fails closed when an operator cap would truncate actual paging', async () => {
@@ -612,7 +721,13 @@ describe('API-Football target, paging, retry, and quota behavior', () => {
     expect(result.quotaBefore.dailyRemaining).toBe(30);
     expect(result.quotaAfter.dailyRemaining).toBe(26);
     expect(result.quotaGates.oneRun).toMatchObject({ requiredRequests: 18, allowed: true });
-    expect(result.quotaGates.twoRuns).toMatchObject({ requiredRequests: 36, allowed: false, shortfall: 10 });
+    expect(result.quotaGates.twoRuns).toMatchObject({
+      requiredRequests: 36,
+      probeRequests: 5,
+      effectiveRemainingRequests: 31,
+      allowed: false,
+      shortfall: 5,
+    });
   });
 
   it('builds explicit quota gates and preserves unknown quota state', () => {
@@ -622,6 +737,35 @@ describe('API-Football target, paging, retry, and quota behavior', () => {
       .toMatchObject({ runs: 2, bufferMultiplier: 1.2, requiredRequests: 24, allowed: false, shortfall: 4 });
     expect(getApiFootballOneRunQuotaGate({}, 10))
       .toMatchObject({ allowed: null, shortfall: null });
+  });
+
+  it('includes completed probe requests in target quota accounting', () => {
+    expect(getApiFootballOneRunQuotaGate({ dailyRemaining: 68 }, 57, 1)).toMatchObject({
+      requiredRequests: 69,
+      remainingRequests: 68,
+      probeRequests: 1,
+      effectiveRemainingRequests: 69,
+      allowed: true,
+      shortfall: 0,
+    });
+    expect(getApiFootballOneRunQuotaGate({ dailyRemaining: 67 }, 57, 1)).toMatchObject({
+      effectiveRemainingRequests: 68,
+      allowed: false,
+      shortfall: 1,
+    });
+  });
+
+  it('supports sequential Day 4 gates from the live remaining quota', () => {
+    expect(getApiFootballOneRunQuotaGate({ dailyRemaining: 99 }, 38, 1)).toMatchObject({
+      requiredRequests: 46,
+      effectiveRemainingRequests: 100,
+      allowed: true,
+    });
+    expect(getApiFootballOneRunQuotaGate({ dailyRemaining: 61 }, 46, 1)).toMatchObject({
+      requiredRequests: 56,
+      effectiveRemainingRequests: 62,
+      allowed: true,
+    });
   });
 
   it('fails on provider errors and successful empty pages', async () => {

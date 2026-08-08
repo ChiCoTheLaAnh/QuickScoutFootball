@@ -261,7 +261,7 @@ Set these in the Vercel project (**Settings → Environment Variables**):
 | `API_FOOTBALL_API_KEY` | Required for manual and cron provider sync | Sent as `x-apisports-key` |
 | `API_FOOTBALL_PLAYERS_URL` | Optional single target | Direct API-Football `/players` URL with one allowed league and `season=2024` |
 | `API_FOOTBALL_PLAYERS_URLS` | Required for a full Big Five run | Exact direct URLs for leagues `39,140,135,78,61`; do not duplicate `API_FOOTBALL_PLAYERS_URL` |
-| `API_FOOTBALL_MAX_PAGES_PER_TARGET` | Optional | Fail-closed page cap; defaults to and cannot exceed `50` |
+| `API_FOOTBALL_MAX_PAGES_PER_TARGET` | Optional | Fail-closed page cap; defaults to and cannot exceed `60` |
 | `PERF_REVIEW_SECRET` | Temporary production acceptance only | Authenticates the mode that skips recommendation-run persistence; it does not bypass the request path or rate limit |
 
 ### Seed-only deploy (fastest MVP)
@@ -278,9 +278,9 @@ Set these in the Vercel project (**Settings → Environment Variables**):
 
 ### Cron note
 
-During rollout, `vercel.json` schedules `GET /api/cron/refresh` daily at `05:00 UTC`. The route requires `Authorization: Bearer <CRON_SECRET>` and deterministically selects `[39, 140, 135, 78, 61]` using the UTC epoch day modulo five.
+The cron schedule stays disabled during the free staged backfills. For the final proof only, `vercel.json` temporarily schedules `GET /api/cron/refresh` at `05:00 UTC`. The route requires `Authorization: Bearer <CRON_SECRET>` and deterministically selects `[39, 140, 135, 78, 61]` using the UTC epoch day modulo five.
 
-The cron route pins a 300-second maximum duration and `vercel.json` enables Fluid Compute. The production canary evidence must still record actual pages, minute-quota headers, and wall duration; the duration cap is not permission to run an unsafe page count.
+The cron route pins a 300-second maximum duration, enforces an internal 285-second provider deadline, and `vercel.json` enables Fluid Compute. The internal deadline aborts provider work early enough to persist failure state before Vercel's hard limit. Cron proof must use the Bundesliga `78` rotation slot; larger leagues cannot safely fit the free-tier 6200ms request pacing.
 
 Each invocation first atomically claims a unique persisted key in `provider_sync_runs`. A duplicate event returns `200 skipped` before any provider request, including when the first invocation failed. A 10-minute lease is health metadata only; stale runs are never reclaimed automatically.
 
@@ -359,7 +359,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 API_FOOTBALL_API_KEY=your-api-football-key
 API_FOOTBALL_PLAYERS_URLS=https://v3.football.api-sports.io/players?league=39\&season=2024,...
-API_FOOTBALL_MAX_PAGES_PER_TARGET=50
+API_FOOTBALL_MAX_PAGES_PER_TARGET=60
 ```
 
 Probe page one of all five leagues without writing players or facts:
@@ -368,15 +368,19 @@ Probe page one of all five leagues without writing players or facts:
 npm run probe:api-football
 ```
 
-Run the Premier League canary, the first quota-gated full backfill, and the second idempotency backfill:
+Run one league per invocation. Page 1 is both the quota probe and the first ingested page; it is not fetched twice. The free staged schedule is repeated for Pass 2:
 
 ```bash
 npm run sync:api-football -- --league=39
-npm run sync:api-football -- --full --quota-runs=2
-npm run sync:api-football -- --full --quota-runs=1
+npm run sync:api-football -- --league=140
+npm run sync:api-football -- --league=135
+npm run sync:api-football -- --league=78
+npm run sync:api-football -- --league=61
 ```
 
-Every successful provider response must include parseable daily and minute quota headers. A full run reads every target's actual `paging.total` before continuing; it requires a 20% buffer for the requested number of runs. More than 50 pages aborts instead of truncating. Requests are sequential and minute-paced; 429/5xx responses get at most three retries, while confirmed daily exhaustion is not retried.
+Every successful provider response must include parseable daily and minute quota headers. For a target with `P` pages, the gate requires `ceil(P × 1.20)` requests. Because the first response header is post-probe, the comparison uses `dailyRemainingAfterProbe + 1`; summaries retain both values. More than 60 pages aborts instead of truncating. Request starts, including retries, are at least 6200ms apart. A target also stops before its next page if remaining daily quota cannot finish the remaining pages. 429/5xx responses get at most three retries, while confirmed daily exhaustion is not retried.
+
+Treat each day as a provider quota window confirmed from live headers, not an assumed timezone reset. Pass 1 and Pass 2 each use league `39`, then `140`, then `135` on separate quota days. On the fourth day run `78` and then `61` as separate commands; the second command performs its own gate against quota left after `78`. If it fails closed, defer `61` to the next quota window without reducing the 20% buffer. Do not use `--full` for this rollout and do not run these backfills through Vercel.
 
 Each manual invocation is persisted with a random key, so two same-day backfills remain distinct. Player upserts are batched at 250 and fact upserts at 500. The JSON summary reports target pages/facts/skips, quota before/after, retries, duration, and truncation status without printing secrets, configured URLs, raw payloads, or full records.
 
@@ -491,7 +495,7 @@ Provider integrations are intentionally staged:
    - Continue using API-Football as the only active provider.
    - Fetch one or more full player endpoint URLs through `API_FOOTBALL_PLAYERS_URL` and `API_FOOTBALL_PLAYERS_URLS`.
    - Filter every statistics block to the exact target league and season before aggregation.
-   - Follow actual provider pagination up to the fail-closed cap of 50.
+   - Follow actual provider pagination up to the fail-closed cap of 60.
    - Preserve canonical identity as provider source plus provider player ID.
    - Keep downstream app and recommendation API contracts unchanged.
 

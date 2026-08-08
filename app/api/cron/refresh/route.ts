@@ -16,6 +16,7 @@ import {
 // The provider is fetched sequentially and paced from its real minute-quota headers.
 // Fluid Compute gives this validation-only canary enough wall time while retaining a hard cap.
 export const maxDuration = 300;
+const CRON_INTERNAL_DEADLINE_MS = 285_000;
 
 export async function GET(req: Request) {
   const startedAt = Date.now();
@@ -102,8 +103,9 @@ export async function GET(req: Request) {
     const summary = await syncApiFootballPlayers({
       targetMode: 'configured',
       leagueIds: [target.leagueId],
-      maxPagesPerTarget: 50,
+      maxPagesPerTarget: 60,
       quotaRuns: 1,
+      deadlineAtMs: startedAt + CRON_INTERNAL_DEADLINE_MS,
     });
     const completedAt = new Date();
     const summaryPayload = summary as unknown as Record<string, unknown>;

@@ -13,11 +13,11 @@ import {
 
 export const API_FOOTBALL_BIG_FIVE_LEAGUE_IDS = ['39', '140', '135', '78', '61'] as const;
 export const API_FOOTBALL_TARGET_SEASON = '2024';
-export const API_FOOTBALL_HARD_PAGE_CAP = 50;
+export const API_FOOTBALL_HARD_PAGE_CAP = 60;
 
 const API_FOOTBALL_HOST = 'v3.football.api-sports.io';
 const API_FOOTBALL_PATH = '/players';
-const DEFAULT_REQUEST_PACING_MS = 250;
+export const API_FOOTBALL_MIN_REQUEST_START_INTERVAL_MS = 6_200;
 const MAX_REQUEST_RETRIES = 3;
 
 export type ApiFootballLeagueId = typeof API_FOOTBALL_BIG_FIVE_LEAGUE_IDS[number];
@@ -30,6 +30,7 @@ export interface ApiFootballFetchOptions {
   maxPagesPerTarget?: number;
   pacingMs?: number;
   wait?: (milliseconds: number) => Promise<void>;
+  deadlineAtMs?: number;
 }
 
 export interface ApiFootballQuotaSnapshot {
@@ -45,6 +46,8 @@ export interface ApiFootballQuotaGate {
   requestsPerRun: number;
   requiredRequests: number;
   remainingRequests?: number;
+  probeRequests: number;
+  effectiveRemainingRequests?: number;
   allowed: boolean | null;
   shortfall: number | null;
 }
@@ -134,7 +137,8 @@ type ApiFootballPageResult = {
 type RequestState = {
   configuredPacingMs: number;
   wait: (milliseconds: number) => Promise<void>;
-  lastRequestAt: number | null;
+  lastRequestStartedAt: number | null;
+  deadlineAtMs?: number;
   quotaBefore: ApiFootballQuotaSnapshot | null;
   quota: ApiFootballQuotaSnapshot;
   requestsMade: number;
@@ -191,12 +195,12 @@ export async function fetchApiFootballPlayerCoverage(
 
   const pagesExpected = targetCoverage.reduce((sum, target) => sum + target.totalPages, 0);
   assertCompleteQuotaHeaders(requestState.quota);
-  const probeQuotaGates = buildQuotaGates(requestState.quota, pagesExpected);
+  const probeQuotaGates = buildQuotaGates(requestState.quota, pagesExpected, probedTargets.length);
   const quotaRuns = resolveQuotaRuns(options.quotaRuns);
   const selectedGate = quotaRuns === 2 ? probeQuotaGates.twoRuns : probeQuotaGates.oneRun;
   if (selectedGate.allowed !== true) {
     throw new Error(
-      `API-Football quota gate blocked ${quotaRuns} run(s): requires ${selectedGate.requiredRequests}, remaining ${selectedGate.remainingRequests ?? 'unknown'}`,
+      `API-Football quota gate blocked ${quotaRuns} run(s): requires ${selectedGate.requiredRequests}, remaining ${selectedGate.remainingRequests ?? 'unknown'} after ${selectedGate.probeRequests} probe(s)`,
     );
   }
 
@@ -218,6 +222,7 @@ export async function fetchApiFootballPlayerCoverage(
       coverage.matchedFacts += pageResult.matchedFacts;
       coverage.matchedStatisticBlocks += pageResult.matchedStatisticBlocks;
       coverage.filteredStatisticBlocks += pageResult.filteredStatisticBlocks;
+      assertRemainingDailyQuota(requestState.quota, firstPage.totalPages - page, target);
     }
   }
 
@@ -319,22 +324,24 @@ export async function probeApiFootballPlayerCoverage(
     quotaBefore: requireQuotaBefore(requestState),
     quotaAfter: { ...requestState.quota },
     quota: requestState.quota,
-    quotaGates: buildQuotaGates(requestState.quota, pagesRequired),
+    quotaGates: buildQuotaGates(requestState.quota, pagesRequired, targetCoverage.length),
   };
 }
 
 export function getApiFootballOneRunQuotaGate(
   quota: ApiFootballQuotaSnapshot,
   requestsPerRun: number,
+  probeRequests = 0,
 ): ApiFootballQuotaGate {
-  return buildQuotaGate(quota, requestsPerRun, 1);
+  return buildQuotaGate(quota, requestsPerRun, 1, probeRequests);
 }
 
 export function getApiFootballTwoRunQuotaGate(
   quota: ApiFootballQuotaSnapshot,
   requestsPerRun: number,
+  probeRequests = 0,
 ): ApiFootballQuotaGate {
-  return buildQuotaGate(quota, requestsPerRun, 2);
+  return buildQuotaGate(quota, requestsPerRun, 2, probeRequests);
 }
 
 export function transformApiFootballPlayer(raw: ProviderPlayerRaw): Player | null {
@@ -555,14 +562,22 @@ function resolveQuotaRuns(value: 1 | 2 | undefined): 1 | 2 {
 }
 
 function createRequestState(options: ApiFootballFetchOptions): RequestState {
-  const configuredPacingMs = options.pacingMs ?? DEFAULT_REQUEST_PACING_MS;
-  if (!Number.isFinite(configuredPacingMs) || configuredPacingMs < 0) {
+  const requestedPacingMs = options.pacingMs ?? API_FOOTBALL_MIN_REQUEST_START_INTERVAL_MS;
+  if (!Number.isFinite(requestedPacingMs) || requestedPacingMs < 0) {
     throw new Error('API-Football pacingMs must be a non-negative number');
+  }
+  const configuredPacingMs = Math.max(
+    requestedPacingMs,
+    API_FOOTBALL_MIN_REQUEST_START_INTERVAL_MS,
+  );
+  if (options.deadlineAtMs !== undefined && (!Number.isFinite(options.deadlineAtMs) || options.deadlineAtMs <= 0)) {
+    throw new Error('API-Football deadlineAtMs must be a positive timestamp');
   }
   return {
     configuredPacingMs,
     wait: options.wait ?? wait,
-    lastRequestAt: null,
+    lastRequestStartedAt: null,
+    deadlineAtMs: options.deadlineAtMs,
     quotaBefore: null,
     quota: {},
     requestsMade: 0,
@@ -639,14 +654,24 @@ async function fetchWithRetry(
   const maxAttempts = MAX_REQUEST_RETRIES + 1;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     await paceRequest(state);
-    const response = await fetch(url, {
-      headers: {
-        Accept: 'application/json',
-        'x-apisports-key': apiKey,
-      },
-    });
+    assertBeforeDeadline(state);
+    state.lastRequestStartedAt = Date.now();
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        headers: {
+          Accept: 'application/json',
+          'x-apisports-key': apiKey,
+        },
+        signal: createDeadlineSignal(state),
+      });
+    } catch (error) {
+      if (isDeadlineError(error) || deadlineExceeded(state)) {
+        throw new Error('API-Football internal deadline exceeded');
+      }
+      throw error;
+    }
     state.requestsMade += 1;
-    state.lastRequestAt = Date.now();
     const responseQuota = updateQuotaSnapshot(state, response.headers);
 
     if (response.ok) {
@@ -672,7 +697,7 @@ async function fetchWithRetry(
 }
 
 async function paceRequest(state: RequestState): Promise<void> {
-  if (state.lastRequestAt === null) return;
+  if (state.lastRequestStartedAt === null) return;
   const minutePacingMs = state.quota.minuteLimit && state.quota.minuteLimit > 0
     ? Math.ceil(60_000 / state.quota.minuteLimit)
     : 0;
@@ -682,8 +707,14 @@ async function paceRequest(state: RequestState): Promise<void> {
     minutePacingMs,
     exhaustedMinuteWindowMs,
   );
-  const remainingMs = pacingMs - (Date.now() - state.lastRequestAt);
-  if (remainingMs > 0) await state.wait(remainingMs);
+  const remainingMs = pacingMs - (Date.now() - state.lastRequestStartedAt);
+  if (remainingMs > 0) {
+    if (state.deadlineAtMs !== undefined && Date.now() + remainingMs >= state.deadlineAtMs) {
+      throw new Error('API-Football internal deadline exceeded before next request');
+    }
+    await state.wait(remainingMs);
+  }
+  assertBeforeDeadline(state);
 }
 
 function retryDelayMs(headers: Headers, attempt: number): number {
@@ -725,10 +756,11 @@ function readHeaderNumber(headers: Headers | undefined, name: string): number | 
 function buildQuotaGates(
   quota: ApiFootballQuotaSnapshot,
   requestsPerRun: number,
+  probeRequests = 0,
 ): { oneRun: ApiFootballQuotaGate; twoRuns: ApiFootballQuotaGate } {
   return {
-    oneRun: getApiFootballOneRunQuotaGate(quota, requestsPerRun),
-    twoRuns: getApiFootballTwoRunQuotaGate(quota, requestsPerRun),
+    oneRun: getApiFootballOneRunQuotaGate(quota, requestsPerRun, probeRequests),
+    twoRuns: getApiFootballTwoRunQuotaGate(quota, requestsPerRun, probeRequests),
   };
 }
 
@@ -736,21 +768,66 @@ function buildQuotaGate(
   quota: ApiFootballQuotaSnapshot,
   requestsPerRun: number,
   runs: 1 | 2,
+  probeRequests: number,
 ): ApiFootballQuotaGate {
   if (!Number.isInteger(requestsPerRun) || requestsPerRun < 0) {
     throw new Error('API-Football requestsPerRun must be a non-negative integer');
   }
   const requiredRequests = Math.ceil(requestsPerRun * runs * 1.2);
+  if (!Number.isInteger(probeRequests) || probeRequests < 0) {
+    throw new Error('API-Football probeRequests must be a non-negative integer');
+  }
   const remainingRequests = quota.dailyRemaining;
+  const effectiveRemainingRequests = remainingRequests === undefined
+    ? undefined
+    : remainingRequests + probeRequests;
   return {
     runs,
     bufferMultiplier: 1.2,
     requestsPerRun,
     requiredRequests,
     remainingRequests,
-    allowed: remainingRequests === undefined ? null : remainingRequests >= requiredRequests,
-    shortfall: remainingRequests === undefined ? null : Math.max(0, requiredRequests - remainingRequests),
+    probeRequests,
+    effectiveRemainingRequests,
+    allowed: effectiveRemainingRequests === undefined ? null : effectiveRemainingRequests >= requiredRequests,
+    shortfall: effectiveRemainingRequests === undefined
+      ? null
+      : Math.max(0, requiredRequests - effectiveRemainingRequests),
   };
+}
+
+function assertRemainingDailyQuota(
+  quota: ApiFootballQuotaSnapshot,
+  remainingPages: number,
+  target: ApiFootballTarget,
+): void {
+  assertCompleteQuotaHeaders(quota);
+  if ((quota.dailyRemaining ?? 0) < remainingPages) {
+    throw new Error(
+      `API-Football daily quota cannot finish league ${target.leagueId}: ${remainingPages} page(s) remain, ${quota.dailyRemaining ?? 'unknown'} request(s) available`,
+    );
+  }
+}
+
+function assertBeforeDeadline(state: RequestState): void {
+  if (deadlineExceeded(state)) {
+    throw new Error('API-Football internal deadline exceeded');
+  }
+}
+
+function deadlineExceeded(state: RequestState): boolean {
+  return state.deadlineAtMs !== undefined && Date.now() >= state.deadlineAtMs;
+}
+
+function createDeadlineSignal(state: RequestState): AbortSignal | undefined {
+  if (state.deadlineAtMs === undefined) return undefined;
+  const remainingMs = state.deadlineAtMs - Date.now();
+  if (remainingMs <= 0) throw new Error('API-Football internal deadline exceeded');
+  return AbortSignal.timeout(Math.max(1, remainingMs));
+}
+
+function isDeadlineError(error: unknown): boolean {
+  return error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError');
 }
 
 function assertCompleteQuotaHeaders(quota: ApiFootballQuotaSnapshot): void {

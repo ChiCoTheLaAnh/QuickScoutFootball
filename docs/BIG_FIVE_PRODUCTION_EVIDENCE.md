@@ -1,6 +1,6 @@
 # Big Five season 2024 production evidence
 
-Status: rollout blocked by live provider page totals and daily quota. Historical season 2024 refresh is validation-only.
+Status: free staged implementation complete locally; deployment and Pass 1 pending. Historical season 2024 refresh is validation-only.
 
 ## Release identity
 
@@ -75,5 +75,5 @@ The local benchmark used the exact seed identity `seed:seed-mohamed-salah`. Prod
 - API-Football season `2024` is historical and must not remain on a recurring refresh schedule.
 - Missing market value, xG, and xA remain null; they are not synthesized.
 - No cross-provider reconciliation is performed by name. Same-name provider identities remain distinct and are reported by the audit.
-- The live provider account exposed roughly a 100-request daily allowance, not enough for the required 591-request two-run gate. The rollout cannot continue until the provider raises that real header allowance.
-- Live Premier League, La Liga, and Serie A totals exceed the approved 50-page cap. Raising the cap to at least 57 (preferably 60) requires an explicit rollout-plan correction; no truncation was performed.
+- The live provider account exposes roughly a 100-request daily allowance. Backfills therefore run locally one target per quota gate across multiple daily windows; no Vercel full sync is permitted.
+- The approved fail-closed page cap is 60. Request starts are paced by at least 6200ms and every target retains the 20% probe-inclusive quota buffer.

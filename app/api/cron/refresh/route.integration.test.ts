@@ -120,8 +120,9 @@ describe('GET /api/cron/refresh', () => {
     expect(mockedSyncApiFootballPlayers).toHaveBeenCalledWith({
       targetMode: 'configured',
       leagueIds: ['39'],
-      maxPagesPerTarget: 50,
+      maxPagesPerTarget: 60,
       quotaRuns: 1,
+      deadlineAtMs: new Date('1970-01-01T05:00:00.000Z').getTime() + 285_000,
     });
     expect(mockedFinalizeProviderSyncRun).toHaveBeenCalledWith(expect.objectContaining({
       invocationKey: 'cron:apiFootball:2024:39:1970-01-01',
