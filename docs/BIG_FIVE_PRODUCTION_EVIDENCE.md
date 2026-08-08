@@ -6,8 +6,8 @@ Status: conservative quota ledger and global provider-season lock verified local
 
 | Evidence | Value |
 |---|---|
-| Implementation commit | `37bf9dc` (free staged guardrails; earlier identity implementation `bb0ec83`) |
-| Canary deployment | `dpl_CaL9JRdzPZh1LPFoxioyuFpBFjdR` — READY at `quick-scout-football.vercel.app`; cron disabled |
+| Implementation commit | `d87972a` (conservative quota ledger/global lock; free staged guardrails `37bf9dc`; identity implementation `bb0ec83`) |
+| Cron-off ledger deployment | `dpl_FsvqBembHCz41KvWcAfWJSwgBw9f` — READY at `quick-scout-football.vercel.app`; production smoke passed; cron list empty |
 | Final deployment without cron | Pending |
 | Supabase migrations | `20260808000359_provider_sync_runs`, `20260808003758_provider_sync_runs_hardening`, and `20260808040855_provider_sync_run_global_lock` applied |
 
@@ -15,12 +15,12 @@ Status: conservative quota ledger and global provider-season lock verified local
 
 | Check | Result |
 |---|---|
-| Unit/integration | 122 passed; 2 environment-gated tests skipped |
+| Unit/integration | 138 passed; 2 environment-gated tests skipped |
 | TypeScript | Passed |
 | ESLint | Passed |
 | Production build | Passed |
 | Playwright E2E | Exact-identity flow passed 1/1 |
-| Production-mode smoke | Passed: search, exact-identity recommendation, validation 400, and missing route 404 |
+| Production-mode smoke | Local and deployed production alias passed |
 | Search benchmark | 3 warmups + 50 measured; 50 HTTP 200; median 6.7 ms; p95 9.9 ms; max 11.8 ms; 189-byte payload; 1 result |
 | Recommendation benchmark | 3 warmups + 50 measured; 50 HTTP 200; median 8.3 ms; p95 9.8 ms; max 10.8 ms; 7,474-byte payload; 10 results |
 

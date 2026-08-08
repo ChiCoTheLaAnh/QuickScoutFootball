@@ -4,7 +4,7 @@
 
 **Final Big Five season 2024 production-proof rollout in progress; Product Phase 4 and Analytics Phase 0 remain complete**
 
-Data pipeline context (see [README.md](README.md)): the identity-safe, quota-gated Big Five implementation is complete locally. The additive persisted-run migration has been applied to hosted Supabase; canary/backfill/deployment evidence is still pending.
+Data pipeline context (see [README.md](README.md)): the identity-safe, quota-gated Big Five implementation is deployed cron-off. The additive global-lock migration has been applied and verified on hosted Supabase; staged backfill evidence is still pending.
 
 ## Objective Of Current Phase
 
@@ -75,13 +75,13 @@ Avoid:
 - API-Football page-1 probes use actual page totals, complete fail-closed quota headers, 20% safety gates, cap 60, 6200ms pacing, and bounded retries; later missing headers use a monotonic conservative ledger
 - Provider writes are batched at 250 players and 500 facts; app reads use 500-row player cursors and 100-ID stat chunks with concurrency four
 - Persisted `provider_sync_runs` claims protect the global `apiFootball:2024` quota scope across manual and cron runs; lock losers make zero provider calls and health reads persisted state
-- Current merged tree passes 122 unit/integration tests (2 environment-gated skips), typecheck, lint, production build, exact-identity E2E, production-mode smoke, and 3+50 endpoint benchmarks
+- Current merged tree passes 138 unit/integration tests (2 environment-gated skips), typecheck, lint, production build, exact-identity E2E, production-mode smoke, and 3+50 endpoint benchmarks
 - Hosted `provider_sync_runs`, hardening, and provider-season global-lock migrations are applied; table access is limited to service-role reads/writes and claim/finalize RPC execution
 - Free staged provider guardrails are implemented locally: 60-page cap, probe-inclusive per-target gates, 6200ms request-start pacing, remaining-page quota checks, and a 285-second cron deadline
+- Conservative-ledger release `d87972a` is deployed as `dpl_FsvqBembHCz41KvWcAfWJSwgBw9f`; production smoke passed, Vercel cron list is empty, and all required production env names/scopes remain present
 
 ## In Progress
 
-- Deploy the cron-off free staged release with the exact five season-2024 provider targets preserved
 - Run two local staged passes across daily quota windows, followed by two dbt builds and production acceptance
 - Capture one scheduled cron/duplicate/health proof, then remove the schedule and temporary performance secret
 
