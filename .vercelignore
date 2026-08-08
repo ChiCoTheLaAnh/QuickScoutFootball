@@ -1,0 +1,10 @@
+.git
+.next
+.tmp
+.venv-dbt
+analytics/logs
+analytics/target
+node_modules
+playwright-report
+test-results
+tsconfig.tsbuildinfo
