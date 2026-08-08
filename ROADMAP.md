@@ -114,7 +114,7 @@ Aligned with [README.md](README.md) provider integration plan.
 - [x] Implement `GET /api/cron/refresh` ingestion job
 - [x] Wire Vercel cron (`vercel.json`) with monitoring
 - [x] Alert on failed ingestion / stale data
-- [x] Validate scheduled production cron run after deploy
+- [x] Validate the earlier single-target scheduled production cron run after deploy
 
 ## Phase 5 — Expanded API-Football coverage
 
@@ -123,6 +123,21 @@ Aligned with [README.md](README.md) provider integration plan.
 - [x] De-dupe provider players before transform/upsert
 - [x] Add coverage metadata to provider sync summaries
 - [x] Keep downstream app and recommendation API contracts unchanged
+
+## Final milestone — Big Five season 2024 production proof
+
+- [x] Restrict ingestion to exact Big Five league/season blocks before aggregation
+- [x] Preserve canonical identity by provider source and provider player ID across ingestion, search, selection, and ranking
+- [x] Aggregate multi-team facts and pass accuracy with pass-total/minutes weighting
+- [x] Add actual-page quota probes, 20% gates, fail-closed headers/cap, pacing, and bounded retries
+- [x] Add service-role-only persisted sync claims, duplicate suppression, deterministic cron rotation, and persisted health
+- [x] Scale Supabase reads and writes with cursor/chunk pagination and bounded batch/concurrency sizes
+- [x] Add canary/full audit, checksum, smoke, E2E, and 3+50 performance acceptance tooling
+- [x] Generate and apply the additive `provider_sync_runs` migration
+- [ ] Deploy the canary release and configure all five production targets
+- [ ] Complete canary, probe, two full backfills, two dbt builds, hosted audits, and production performance evidence
+- [ ] Validate one scheduled cron plus same-day duplicate skip, then remove the cron schedule and performance secret
+- [ ] Record final production evidence and stop the project
 
 ---
 

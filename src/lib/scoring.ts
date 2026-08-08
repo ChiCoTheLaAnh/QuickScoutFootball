@@ -1,6 +1,7 @@
 import type { Player, RecommendationMode, RecommendationRequest, RecommendationScoreBreakdown } from './types';
 
 const EPSILON = 1e-9;
+const OPTIONAL_ADVANCED_FEATURES = new Set(['xG', 'xA']);
 
 const ROLE_FEATURES: Record<string, string[]> = {
   winger: ['goals', 'assists', 'xA', 'keyPasses', 'shots', 'passAccuracyPct', 'minutes'],
@@ -61,9 +62,10 @@ export function filterCandidatesByMode(
   mode: RecommendationMode,
 ): Player[] {
   if (mode === 'cheaper') {
-    const targetMv = target.marketValueEur ?? Number.POSITIVE_INFINITY;
+    const targetMv = target.marketValueEur;
+    if (targetMv === undefined) return candidates;
     const cheaper = candidates.filter(
-      (candidate) => (candidate.marketValueEur ?? Number.POSITIVE_INFINITY) <= targetMv,
+      (candidate) => candidate.marketValueEur === undefined || candidate.marketValueEur <= targetMv,
     );
     return cheaper.length > 0 ? cheaper : candidates;
   }
@@ -109,19 +111,34 @@ export function cosineSimilarity(vectorA: number[], vectorB: number[]): number {
 
 export function buildRoleVector(player: Player, role: string): number[] {
   const roleKey = role in ROLE_FEATURES ? role : 'central_midfielder';
-  const stats = player.stats ?? {};
-  const ranges = ROLE_TARGET_RANGES[roleKey] ?? {};
+  return buildRoleVectorForFeatures(player, roleKey, ROLE_FEATURES[roleKey]);
+}
 
-  return ROLE_FEATURES[roleKey].map((feature) => {
+function buildRoleVectorForFeatures(player: Player, role: string, features: string[]): number[] {
+  const stats = player.stats ?? {};
+  const ranges = ROLE_TARGET_RANGES[role] ?? {};
+
+  return features.map((feature) => {
     const raw = typeof stats[feature] === 'number' ? (stats[feature] as number) : 0;
     const [min, max] = ranges[feature] ?? [0, 1];
     return normalizeValue(raw, min, max);
   });
 }
 
+function hasScorableAdvancedFeature(player: Player, feature: string): boolean {
+  if (!OPTIONAL_ADVANCED_FEATURES.has(feature)) return true;
+  const value = player.stats?.[feature];
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
 export function calculateSimilarityScore(target: Player, candidate: Player, role: string): number {
-  const targetVector = buildRoleVector(target, role);
-  const candidateVector = buildRoleVector(candidate, role);
+  const roleKey = role in ROLE_FEATURES ? role : 'central_midfielder';
+  const sharedFeatures = ROLE_FEATURES[roleKey].filter((feature) => (
+    hasScorableAdvancedFeature(target, feature)
+    && hasScorableAdvancedFeature(candidate, feature)
+  ));
+  const targetVector = buildRoleVectorForFeatures(target, roleKey, sharedFeatures);
+  const candidateVector = buildRoleVectorForFeatures(candidate, roleKey, sharedFeatures);
   return cosineSimilarity(targetVector, candidateVector) * 100;
 }
 
@@ -151,7 +168,10 @@ export function calculateAgeUpsideScore(candidate: Player): number {
 
 function calculateOutputScore(candidate: Player, role: string): number {
   const roleKey = role in ROLE_FEATURES ? role : 'central_midfielder';
-  const vector = buildRoleVector(candidate, roleKey);
+  const availableFeatures = ROLE_FEATURES[roleKey].filter((feature) => (
+    hasScorableAdvancedFeature(candidate, feature)
+  ));
+  const vector = buildRoleVectorForFeatures(candidate, roleKey, availableFeatures);
   if (vector.length === 0) return 0;
   const avg = vector.reduce((sum, val) => sum + val, 0) / vector.length;
   return avg * 100;

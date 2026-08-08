@@ -44,7 +44,7 @@ describe.skipIf(!hasSupabase)('Supabase recommendation run persistence', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    const runsResponse = await getRuns(new Request('http://localhost/api/recommendation-runs'));
+    const runsResponse = await getRuns();
     expect(runsResponse.status).toBe(200);
 
     const runsPayload = await runsResponse.json();

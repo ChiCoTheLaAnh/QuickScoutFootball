@@ -6,7 +6,13 @@ export function filterRecommendationCandidates(
   request: Pick<RecommendationRequest, 'maxAge' | 'maxMarketValueEur' | 'minMinutes'>,
 ): Player[] {
   return players.filter((candidate) => {
-    if (candidate.id === target.id) return false;
+    const sameProviderIdentity = Boolean(
+      target.providerPlayerId
+      && candidate.providerPlayerId
+      && candidate.provider === target.provider
+      && candidate.providerPlayerId === target.providerPlayerId,
+    );
+    if (candidate.id === target.id || sameProviderIdentity) return false;
     if (request.maxAge !== null && (candidate.age ?? Number.POSITIVE_INFINITY) > request.maxAge) {
       return false;
     }

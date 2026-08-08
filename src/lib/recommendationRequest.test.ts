@@ -27,6 +27,27 @@ describe('isValidRecommendationRequest', () => {
     ).toBe(true);
   });
 
+  it('accepts an exact target player identity', () => {
+    expect(isValidRecommendationRequest({
+      ...validRequest,
+      targetPlayerIdentity: {
+        providerSource: 'apiFootball',
+        providerPlayerId: '306',
+      },
+    })).toBe(true);
+  });
+
+  it('rejects a partial or blank target player identity', () => {
+    expect(isValidRecommendationRequest({
+      ...validRequest,
+      targetPlayerIdentity: { providerSource: 'apiFootball' },
+    })).toBe(false);
+    expect(isValidRecommendationRequest({
+      ...validRequest,
+      targetPlayerIdentity: { providerSource: ' ', providerPlayerId: '306' },
+    })).toBe(false);
+  });
+
   it('rejects missing or blank target player name', () => {
     expect(isValidRecommendationRequest({ ...validRequest, targetPlayerName: '' })).toBe(false);
     expect(isValidRecommendationRequest({ ...validRequest, targetPlayerName: '   ' })).toBe(false);

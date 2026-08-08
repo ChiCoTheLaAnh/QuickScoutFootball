@@ -5,6 +5,8 @@ import { getPlayers, searchPlayers } from '@/src/lib/supabase/players';
 function mapPlayerSummary(player: Awaited<ReturnType<typeof getPlayers>>[number]) {
   return {
     id: player.id,
+    providerSource: player.provider,
+    providerPlayerId: player.providerPlayerId ?? player.id,
     fullName: player.fullName,
     team: player.team,
     position: player.position,

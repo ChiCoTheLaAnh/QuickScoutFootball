@@ -2,9 +2,8 @@ import { NextResponse } from 'next/server';
 
 import { apiError } from '@/src/lib/apiErrors';
 import { logServerEvent } from '@/src/lib/logging';
-import { API_FOOTBALL_PROVIDER } from '@/src/lib/provider/types';
 import { getRefreshHealth } from '@/src/lib/provider/refreshHealth';
-import { getProviderLastSyncedAt } from '@/src/lib/supabase/providerSync';
+import { getCronProviderSyncHealthRuns } from '@/src/lib/supabase/providerSyncRuns';
 
 export async function GET(req: Request) {
   const startedAt = Date.now();
@@ -30,13 +29,23 @@ export async function GET(req: Request) {
     return apiError('Unauthorized cron request.', 'CRON_UNAUTHORIZED', 401);
   }
 
-  const persistedLastSuccessAt = await getProviderLastSyncedAt(API_FOOTBALL_PROVIDER)
-    .catch(() => null);
-  const health = getRefreshHealth(
-    new Date(),
-    undefined,
-    persistedLastSuccessAt ?? undefined,
-  );
+  let persistedRuns: Awaited<ReturnType<typeof getCronProviderSyncHealthRuns>>;
+  try {
+    persistedRuns = await getCronProviderSyncHealthRuns();
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown persisted health read failure';
+    logServerEvent({
+      event: 'cron.health.unavailable',
+      route: '/api/cron/health',
+      status: 503,
+      durationMs: Date.now() - startedAt,
+      level: 'error',
+      metadata: { errorMessage },
+    });
+    return apiError('Cron health state is unavailable.', 'CRON_HEALTH_UNAVAILABLE', 503);
+  }
+
+  const health = getRefreshHealth(persistedRuns, new Date());
   const durationMs = Date.now() - startedAt;
 
   logServerEvent({
@@ -48,7 +57,11 @@ export async function GET(req: Request) {
     metadata: {
       providerSource: health.providerSource,
       refreshStatus: health.status,
+      runStatus: health.runStatus,
+      invocationKey: health.invocationKey,
+      targetKey: health.targetKey,
       isStale: health.isStale,
+      leaseExpired: health.leaseExpired,
       needsAttention: health.needsAttention,
       lastSuccessAt: health.lastSuccessAt,
       lastFailureAt: health.lastFailureAt,

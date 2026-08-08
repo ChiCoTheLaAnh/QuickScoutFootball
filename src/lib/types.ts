@@ -1,6 +1,7 @@
 export interface Player {
   id: string;
   provider: string;
+  providerPlayerId?: string;
   fullName: string;
   age?: number;
   nationality?: string;
@@ -48,6 +49,10 @@ export interface RecommendationScoreBreakdown {
 
 export interface RecommendationRequest {
   targetPlayerName: string;
+  targetPlayerIdentity?: {
+    providerSource: string;
+    providerPlayerId: string;
+  };
   role: string;
   maxAge: number | null;
   maxMarketValueEur: number | null;

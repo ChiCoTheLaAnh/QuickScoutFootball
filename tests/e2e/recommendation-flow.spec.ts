@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test';
 
+const targetSearchQuery = process.env.E2E_SEARCH_QUERY?.trim() || 'salah';
+const targetName = process.env.E2E_TARGET_NAME?.trim() || 'Mohamed Salah';
+const targetProviderSource = process.env.E2E_TARGET_PROVIDER_SOURCE?.trim() || 'seed';
+const targetProviderPlayerId = process.env.E2E_TARGET_PROVIDER_PLAYER_ID?.trim() || 'seed-mohamed-salah';
+const escapedTargetName = targetName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 test('scout can search for a target player and see recommendations', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => window.localStorage.clear());
@@ -7,13 +13,17 @@ test('scout can search for a target player and see recommendations', async ({ pa
 
   await expect(page.getByRole('heading', { name: /QuickScout Football Recommender/i })).toBeVisible();
 
-  await page.getByLabel('Target player name').fill('salah');
-  await expect(page.getByRole('button', { name: /Mohamed Salah/i })).toBeVisible();
-  await page.getByRole('button', { name: /Mohamed Salah/i }).click();
+  await page.getByLabel('Target player name').fill(targetSearchQuery);
+  const targetSuggestion = page
+    .getByRole('button', { name: new RegExp(escapedTargetName, 'i') })
+    .filter({ hasText: `${targetProviderSource} #${targetProviderPlayerId}` });
+  await expect(targetSuggestion).toHaveCount(1);
+  await expect(targetSuggestion).toBeVisible();
+  await targetSuggestion.click();
 
   await page.getByRole('button', { name: 'Get Recommendations' }).click();
 
-  await expect(page.getByText(/Target:\s*Mohamed Salah/i)).toBeVisible();
+  await expect(page.getByText(new RegExp(`Target:\\s*${escapedTargetName}`, 'i'))).toBeVisible();
   await expect(page.getByRole('table')).toBeVisible();
   await expect(page.locator('tbody tr').first()).toBeVisible();
   await expect(page.getByText('Score / 100')).toBeVisible();
@@ -36,7 +46,7 @@ test('scout can search for a target player and see recommendations', async ({ pa
   expect(shortlistDownload.suggestedFilename()).toBe('quickscout-shortlist.csv');
 
   await expect(page.getByRole('heading', { name: 'Run History' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Mohamed Salah' }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: targetName }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Open Run' }).first().click();
 
   await expect(page.getByRole('heading', { name: 'Run Detail' })).toBeVisible();

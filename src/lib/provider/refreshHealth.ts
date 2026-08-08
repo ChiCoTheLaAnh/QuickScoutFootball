@@ -1,3 +1,7 @@
+import type {
+  CronProviderSyncHealthRuns,
+  ProviderSyncRun,
+} from '../supabase/providerSyncRuns';
 import type { ProviderSyncSummary } from './apiFootballSync';
 import { API_FOOTBALL_PROVIDER } from './types';
 
@@ -15,8 +19,13 @@ export interface RefreshFailureMetadata {
 export interface RefreshHealthSnapshot {
   providerSource: string;
   status: RefreshHealthStatus;
+  runStatus: ProviderSyncRun['status'] | null;
   checkedAt: string;
   staleAfterMs: number;
+  invocationKey: string | null;
+  targetKey: string | null;
+  leaseExpiresAt: string | null;
+  leaseExpired: boolean;
   lastSuccessAt: string | null;
   lastFailureAt: string | null;
   lastSummary: ProviderSyncSummary | null;
@@ -24,26 +33,6 @@ export interface RefreshHealthSnapshot {
   ageMs: number | null;
   isStale: boolean;
   needsAttention: boolean;
-}
-
-type RefreshHealthState = {
-  providerSource: string;
-  lastSuccessAt: string | null;
-  lastFailureAt: string | null;
-  lastSummary: ProviderSyncSummary | null;
-  lastFailure: RefreshFailureMetadata | null;
-};
-
-let refreshHealthState: RefreshHealthState = emptyState();
-
-function emptyState(): RefreshHealthState {
-  return {
-    providerSource: API_FOOTBALL_PROVIDER,
-    lastSuccessAt: null,
-    lastFailureAt: null,
-    lastSummary: null,
-    lastFailure: null,
-  };
 }
 
 export function getRefreshStaleAfterMs(): number {
@@ -54,74 +43,75 @@ export function getRefreshStaleAfterMs(): number {
   return DEFAULT_STALE_AFTER_MS;
 }
 
-export function recordRefreshSuccess(
-  summary: ProviderSyncSummary,
-  completedAt = new Date(),
-): RefreshHealthSnapshot {
-  refreshHealthState = {
-    ...refreshHealthState,
-    providerSource: summary.providerSource,
-    lastSuccessAt: completedAt.toISOString(),
-    lastSummary: summary,
-  };
-
-  return getRefreshHealth(completedAt);
-}
-
-export function recordRefreshFailure(
-  failure: RefreshFailureMetadata,
-  failedAt = new Date(),
-): RefreshHealthSnapshot {
-  refreshHealthState = {
-    ...refreshHealthState,
-    providerSource: failure.providerSource ?? refreshHealthState.providerSource,
-    lastFailureAt: failedAt.toISOString(),
-    lastFailure: failure,
-  };
-
-  return getRefreshHealth(failedAt);
-}
-
 export function getRefreshHealth(
+  persistedRuns: CronProviderSyncHealthRuns,
   checkedAt = new Date(),
   staleAfterMs = getRefreshStaleAfterMs(),
-  persistedLastSuccessAt?: string,
 ): RefreshHealthSnapshot {
-  const lastSuccessAt = persistedLastSuccessAt ?? refreshHealthState.lastSuccessAt;
-  const lastSuccessTime = toTime(lastSuccessAt);
-  const lastFailureTime = toTime(refreshHealthState.lastFailureAt);
+  const { latestRun, latestCompletedRun, latestFailedRun } = persistedRuns;
   const checkedTime = checkedAt.getTime();
-  const ageMs = lastSuccessTime === null ? null : Math.max(0, checkedTime - lastSuccessTime);
-  const hasCurrentFailure = lastFailureTime !== null
-    && (lastSuccessTime === null || lastFailureTime > lastSuccessTime);
-  const isStale = ageMs === null || ageMs > staleAfterMs;
+  const completedTime = toTime(latestRun?.completedAt ?? null);
+  const startedTime = toTime(latestRun?.startedAt ?? null);
+  const leaseExpiryTime = toTime(latestRun?.leaseExpiresAt ?? null);
+  const activityTime = completedTime ?? startedTime;
+  const ageMs = activityTime === null ? null : Math.max(0, checkedTime - activityTime);
+  const leaseExpired = latestRun?.status === 'running'
+    && (leaseExpiryTime === null || checkedTime > leaseExpiryTime);
 
   let status: RefreshHealthStatus = 'unknown';
-  if (hasCurrentFailure) {
+  let isStale = latestRun === null;
+
+  if (latestRun?.status === 'failed') {
     status = 'failed';
-  } else if (isStale) {
-    status = lastSuccessTime === null ? 'unknown' : 'stale';
-  } else {
-    status = 'healthy';
+    isStale = false;
+  } else if (latestRun?.status === 'running') {
+    status = leaseExpired ? 'stale' : 'unknown';
+    isStale = leaseExpired;
+  } else if (latestRun?.status === 'completed') {
+    isStale = ageMs === null || ageMs > staleAfterMs;
+    status = isStale ? 'stale' : 'healthy';
   }
 
+  const lastSuccessAt = latestCompletedRun?.completedAt ?? null;
+  const lastFailureAt = latestFailedRun?.completedAt ?? null;
+
   return {
-    providerSource: refreshHealthState.providerSource,
+    providerSource: API_FOOTBALL_PROVIDER,
     status,
+    runStatus: latestRun?.status ?? null,
     checkedAt: checkedAt.toISOString(),
     staleAfterMs,
+    invocationKey: latestRun?.invocationKey ?? null,
+    targetKey: latestRun?.targetKey ?? null,
+    leaseExpiresAt: latestRun?.leaseExpiresAt ?? null,
+    leaseExpired,
     lastSuccessAt,
-    lastFailureAt: refreshHealthState.lastFailureAt,
-    lastSummary: refreshHealthState.lastSummary,
-    lastFailure: refreshHealthState.lastFailure,
+    lastFailureAt,
+    lastSummary: latestCompletedRun?.summary
+      ? latestCompletedRun.summary as unknown as ProviderSyncSummary
+      : null,
+    lastFailure: latestFailedRun ? toFailure(latestFailedRun.error) : null,
     ageMs,
     isStale,
     needsAttention: status !== 'healthy',
   };
 }
 
-export function resetRefreshHealthForTests(): void {
-  refreshHealthState = emptyState();
+function toFailure(error: Record<string, unknown> | null): RefreshFailureMetadata {
+  return {
+    providerSource: stringValue(error?.providerSource) ?? API_FOOTBALL_PROVIDER,
+    errorName: stringValue(error?.errorName) ?? 'UnknownError',
+    errorMessage: stringValue(error?.errorMessage) ?? 'Unknown cron refresh failure',
+    durationMs: numberValue(error?.durationMs) ?? 0,
+  };
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function numberValue(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
 function toTime(value: string | null): number | null {

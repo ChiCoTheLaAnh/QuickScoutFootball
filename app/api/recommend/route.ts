@@ -7,7 +7,12 @@ import { filterRecommendationCandidates } from '@/src/lib/recommendCandidates';
 import { isValidRecommendationRequest } from '@/src/lib/recommendationRequest';
 import { calculateReplacementScore, explainRecommendation, filterCandidatesByMode } from '@/src/lib/scoring';
 import { createRecommendationRun } from '@/src/lib/supabase/recommendationRuns';
-import { getPlayerByName, getPlayers } from '@/src/lib/supabase/players';
+import {
+  AmbiguousPlayerNameError,
+  getPlayerByIdentity,
+  getPlayerByName,
+  getPlayers,
+} from '@/src/lib/supabase/players';
 import type { Recommendation, RecommendationResponse } from '@/src/lib/types';
 
 export async function POST(req: Request) {
@@ -52,7 +57,28 @@ export async function POST(req: Request) {
       );
     }
 
-    const target = await getPlayerByName(json.targetPlayerName);
+    let target;
+    try {
+      target = json.targetPlayerIdentity
+        ? await getPlayerByIdentity(json.targetPlayerIdentity)
+        : await getPlayerByName(json.targetPlayerName);
+    } catch (error) {
+      if (error instanceof AmbiguousPlayerNameError) {
+        logServerEvent({
+          event: 'recommend.target_ambiguous',
+          route: '/api/recommend',
+          status: 409,
+          durationMs: Date.now() - startedAt,
+          metadata: { mode: json.mode },
+        });
+        return apiError(
+          'Multiple players match that name. Select a player from the search suggestions.',
+          'TARGET_PLAYER_AMBIGUOUS',
+          409,
+        );
+      }
+      throw error;
+    }
 
     if (!target) {
       logServerEvent({
@@ -87,13 +113,25 @@ export async function POST(req: Request) {
           breakdown: scoreBreakdown,
         };
       })
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => (
+        b.score - a.score
+        || a.player.provider.localeCompare(b.player.provider)
+        || (a.player.providerPlayerId ?? a.player.id)
+          .localeCompare(b.player.providerPlayerId ?? b.player.id)
+      ))
       .slice(0, 10);
 
     const response: RecommendationResponse = { target, recommendations };
     const responsePayloadBytes = Buffer.byteLength(JSON.stringify(response), 'utf8');
 
-    void createRecommendationRun(json, response, startedAt).catch(() => undefined);
+    const perfReviewSecret = process.env.PERF_REVIEW_SECRET?.trim();
+    const isAuthenticatedPerfReview = Boolean(
+      perfReviewSecret
+      && req.headers.get('x-quickscout-perf-token') === perfReviewSecret,
+    );
+    if (!isAuthenticatedPerfReview) {
+      void createRecommendationRun(json, response, startedAt).catch(() => undefined);
+    }
 
     logServerEvent({
       event: 'recommend.completed',
