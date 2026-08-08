@@ -6,8 +6,8 @@ Status: rollout in progress. Historical season 2024 refresh is validation-only.
 
 | Evidence | Value |
 |---|---|
-| Implementation commit | Pending |
-| Canary deployment | Pending |
+| Implementation commit | `bb0ec83` (deployment packaging follow-up `a746661`) |
+| Canary deployment | `dpl_GZnq51WTH3D5tWuUgwwYK9ay3UJd` — READY at `quick-scout-football.vercel.app` |
 | Final deployment without cron | Pending |
 | Supabase migrations | `20260808000359_provider_sync_runs` and `20260808003758_provider_sync_runs_hardening` applied |
 
@@ -30,6 +30,7 @@ The local benchmark used the exact seed identity `seed:seed-mohamed-salah`. Prod
 
 | Step | Pages / quota | Rows / coverage | Result |
 |---|---|---|---|
+| Pre-backfill hosted baseline | N/A | 20 API-Football identities; 20 league-39 facts; zero canonical/fact duplicates, orphans, or out-of-scope facts | Recorded; not acceptance evidence |
 | Premier League 39 canary | Pending | Pending | Pending |
 | Five-league probe | Pending | Pending | Pending |
 | Full backfill 1 | Pending | Pending | Pending |
