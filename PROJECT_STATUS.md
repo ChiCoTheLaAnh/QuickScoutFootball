@@ -98,7 +98,8 @@ Avoid:
 - Free staged rollout is approved: cap 60, 6200ms request start pacing, one target per daily quota gate, and two passes over four or more quota windows each
 - Cron remains disabled until the final Bundesliga `78` proof; production provider/database secrets must be preserved through that proof
 - Two earlier Pass 1 Day 1 attempts failed closed when API-Football omitted later-page quota headers; they made no hosted player/fact writes
-- Conservative later-page accounting is now implemented and verified. Retry league 39 only through its normal page-1 probe in a confirmed new quota window; do not run a separate diagnostic probe or weaken the 20% gate
+- The 2026-08-10 retry passed its page-1 probe but API-Football rejected page 4 because Free plans permit a maximum Page value of 3. The run finalized as failed, released the global lock, and made zero player/fact writes
+- League-level Free staged rollout is now externally blocked regardless of quota-window reset. Do not retry or redesign requests (for example, team-scoped partitioning) without explicit approval
 
 ---
 

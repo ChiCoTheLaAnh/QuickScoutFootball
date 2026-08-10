@@ -382,6 +382,8 @@ The successful page-1 probe must include all four parseable daily/minute limit a
 
 Treat each day as a provider quota window confirmed from live headers, not an assumed timezone reset. Pass 1 and Pass 2 each use league `39`, then `140`, then `135` on separate quota days. On the fourth day run `78` and then `61` as separate commands; the second command performs its own gate against quota left after `78`. If it fails closed, defer `61` to the next quota window without reducing the 20% buffer. Do not use `--full` for this rollout and do not run these backfills through Vercel.
 
+As observed on 2026-08-10, the live API-Football Free plan rejects `page > 3`. Because league 39 reports 57 pages, the league-level staged rollout is blocked before any upsert and must not be retried unchanged. Any team-scoped partitioning or other request-shape redesign requires a separate quota/identity review and explicit approval.
+
 Each manual invocation is persisted with a random key, so two same-day backfills remain distinct while still running sequentially under the global provider-season lock. Player upserts are batched at 250 and fact upserts at 500. The JSON summary reports target pages/facts/skips, quota before/after, missing-header/ledger-estimate counts, retries, duration, and truncation status without printing secrets, configured URLs, raw payloads, or full records.
 
 Audit the canary or full corpus. Supply the first full audit checksum to the second audit to prove content stability while ignoring timestamps:

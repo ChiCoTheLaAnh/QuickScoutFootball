@@ -1,6 +1,6 @@
 # Big Five season 2024 production evidence
 
-Status: conservative quota ledger and global provider-season lock verified locally and on hosted Supabase; cron remains disabled and Pass 1 Day 1 retry awaits a new quota window. Historical season 2024 refresh is validation-only.
+Status: conservative quota ledger and global provider-season lock are verified, but the free staged rollout is blocked because the live API-Football Free plan rejects every page greater than 3. Cron remains disabled. Historical season 2024 refresh is validation-only.
 
 ## Release identity
 
@@ -34,6 +34,7 @@ The local benchmark used the exact seed identity `seed:seed-mohamed-salah`. Prod
 | Premier League 39 canary | `paging.total=57`; cap `50`; daily remaining before broader probe `99` | No writes; hosted counts remained 20 identities / 20 facts | Failed closed before pagination because the live total exceeds the approved cap |
 | Pass 1 Day 1 — league 39 | Cap `60`; 6200ms start pacing; live diagnostic showed daily `90/100`, minute `6/10`, pages `57` | Two attempts stopped after about 19s; hosted counts remained 20 identities / 20 facts | Provider intermittently omitted all four required quota headers on a later page; fail closed, no fallback quota inference |
 | Quota-ledger hardening | Page-1 remains complete-header fail-closed; every later attempt decrements a conservative ledger; daily headers cannot increase it | Unit/integration/lint/typecheck/build/E2E/local smoke pass; hosted concurrent-scope test pass | Ready for one league-39 retry in a new provider quota window; no diagnostic probe |
+| Pass 1 Day 1 retry — 2026-08-10 | Page 1 reused as probe; request pacing remained 6200ms; run stopped when requesting page 4 after 19.7s | Persisted `failed`; lock finalized/released; hosted counts remain 20 identities / 20 league-39 facts; checksum `86a6c99fc0c868751d272bf83030ea73ce128ed20a9e54b82cbb6a5539de0f23` | Provider error: `Free plans are limited to a maximum value of 3 for the Page parameter`; zero player/fact writes |
 | Five-league probe | `39=57`, `140=53`, `135=52`, `78=38`, `61=46`; `S=246`; daily remaining after probe `94`; minute remaining `4` | Read-only; five page-one calls | Two-run gate requires `ceil(2 × 246 × 1.20) = 591`, so the live quota failed closed |
 | Full backfill 1 | Pending | Pending | Pending |
 | Full backfill 2 | Pending | Pending | Pending |
@@ -80,3 +81,4 @@ The local benchmark used the exact seed identity `seed:seed-mohamed-salah`. Prod
 - The live provider account exposes roughly a 100-request daily allowance. Backfills therefore run locally one target per quota gate across multiple daily windows; no Vercel full sync is permitted.
 - The approved fail-closed page cap is 60. Request starts are paced by at least 6200ms and every target retains the 20% probe-inclusive quota buffer.
 - Missing later-page quota headers are recorded and estimated conservatively; initial probe headers are never inferred. A partial unique `apiFootball:2024` lock serializes all manual and cron quota consumers.
+- The current Free provider plan cannot fetch league totals beyond page 3. The approved league-level staged rollout therefore cannot reach page 57 or satisfy volume acceptance without a separately approved data-access redesign or plan change.
