@@ -45,6 +45,12 @@ models:
     description: One row per provider source × player × normalized season × competition identity, with no aggregation or deduplication.
     columns:
       - name: fact_player_season_key
+        description: Backward-compatible deterministic key for the player-season-competition grain.
+        data_tests:
+          - not_null
+          - unique
+      - name: player_season_id
+        description: Canonical alias of fact_player_season_key for the player-season-competition grain.
         data_tests:
           - not_null
           - unique
