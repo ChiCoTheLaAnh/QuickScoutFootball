@@ -37,6 +37,17 @@ dbt creates these relations:
 
 `public.players` and `public.player_season_stats` remain application-owned sources. Do not rename or move them: the app and provider sync still access them directly.
 
+### Analytics contract
+
+`fact_player_season` has one row per `provider_source × player × normalized_season × competition_identity`. The canonical `player_season_id` is the same deterministic value as the backward-compatible `fact_player_season_key`; both columns are tested as non-null and unique.
+
+Referential-integrity tests cover all three layers: source season stats resolve to source players, staging season stats resolve to staging players, and every fact row resolves to `dim_player`, `dim_team`, and `dim_league`.
+
+The project defines exactly two custom business-rule test macros:
+
+- `non_negative` rejects negative counting and performance metrics.
+- `within_range` constrains `pass_accuracy` to the inclusive range from 0 to 100.
+
 ### Hosted validation (completed 2026-08-07)
 
 Analytics Phase 0 was validated against hosted Supabase through the SSL-enabled session pooler. `dbt debug` passed, followed by two consecutive idempotent `dbt build` runs. Each build passed all 6 models and 74 data tests (`80/80`).
@@ -57,7 +68,7 @@ Analytics Phase 0 was validated against hosted Supabase through the SSL-enabled 
 | Seasons | 2 |
 | Competition identities | 2 |
 
-Row preservation was exact: `40 staging rows = 40 fact rows`. Duplicate checks for `fact_player_season_key` and `source_stats_id` returned zero rows, and all fact keys resolved to their dimensions without nulls or orphans.
+Row preservation was exact: `40 staging rows = 40 fact rows`. Duplicate checks for `fact_player_season_key` and `source_stats_id` returned zero rows, and all fact keys resolved to their dimensions without nulls or orphans. This hosted run predates the additive `player_season_id` alias and therefore reports 74 rather than the current 76 tests.
 
 ![Hosted dbt lineage graph](docs/analytics/dbt-lineage.png)
 
@@ -95,6 +106,27 @@ dbt docs generate --project-dir analytics --profiles-dir analytics
 ```
 
 Staging models are views and marts are tables. Tests enforce the normalized player-season-competition grain, exact output schema names, non-null dimension keys, referential integrity, and a one-to-one row count between staging stats and the fact.
+
+### Analytics definition of done
+
+GitHub Actions runs the analytics checks against a disposable PostgreSQL 16 service populated from `supabase/schema.sql` and `supabase/seed.sql`. It does not require hosted Supabase credentials. A successful run uploads `index.html`, `catalog.json`, `manifest.json`, and `run_results.json` as the `dbt-docs` artifact.
+
+| Requirement | Evidence |
+|---|---|
+| `dbt debug` and `dbt build` pass | Hosted validation passed twice; the current manifest contains 6 models and 76 data tests. The new CI job runs both commands. |
+| 2 staging models | `stg_players` and `stg_player_season_stats`. |
+| 3 dimensions | `dim_player`, `dim_team`, and `dim_league`. |
+| 1 fact with a declared grain | `fact_player_season`, at provider-player-season-competition grain. |
+| No duplicate `player_season_id` | `not_null` and `unique` tests run on the canonical key. |
+| Relationships pass | Source, staging, and all three fact-to-dimension relationships are tested. |
+| 2 custom business rules pass | `non_negative` and `within_range` are the only custom generic test definitions. |
+| `dbt docs generate` runs | CI is configured to generate and upload the dbt docs artifact. |
+| Architecture and lineage documented | The architecture diagram and hosted lineage screenshot are included above. |
+| Resume uses measured metrics | The bullet below separates CI fixture metrics from hosted Supabase metrics. |
+
+### Resume-ready project bullet
+
+> Built and validated a 6-model dbt/Postgres football analytics star schema (2 staging views, 3 dimensions, 1 fact), preserving 40/40 hosted player-season rows across two idempotent Supabase builds with 74 data tests per build.
 
 ### Team history limitation
 
