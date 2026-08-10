@@ -111,22 +111,24 @@ Staging models are views and marts are tables. Tests enforce the normalized play
 
 GitHub Actions runs the analytics checks against a disposable PostgreSQL 16 service populated from `supabase/schema.sql` and `supabase/seed.sql`. It does not require hosted Supabase credentials. A successful run uploads `index.html`, `catalog.json`, `manifest.json`, and `run_results.json` as the `dbt-docs` artifact.
 
+The first complete CI acceptance run passed on 2026-08-10: [`dbt analytics` run 31405455812](https://github.com/ChiCoTheLaAnh/QuickScoutFootball/actions/runs/31405455812) completed all 6 models and 76 data tests (`82/82`), verified that `player_season_id` exactly matches `fact_player_season_key`, generated the catalog, and uploaded the four-file `dbt-docs` artifact.
+
 | Requirement | Evidence |
 |---|---|
-| `dbt debug` and `dbt build` pass | Hosted validation passed twice; the current manifest contains 6 models and 76 data tests. The new CI job runs both commands. |
+| `dbt debug` and `dbt build` pass | CI run 31405455812 passed 6 models and 76 data tests (`82/82`); hosted validation also passed twice. |
 | 2 staging models | `stg_players` and `stg_player_season_stats`. |
 | 3 dimensions | `dim_player`, `dim_team`, and `dim_league`. |
 | 1 fact with a declared grain | `fact_player_season`, at provider-player-season-competition grain. |
 | No duplicate `player_season_id` | `not_null` and `unique` tests run on the canonical key. |
 | Relationships pass | Source, staging, and all three fact-to-dimension relationships are tested. |
 | 2 custom business rules pass | `non_negative` and `within_range` are the only custom generic test definitions. |
-| `dbt docs generate` runs | CI is configured to generate and upload the dbt docs artifact. |
+| `dbt docs generate` runs | CI generated the catalog and uploaded the four-file `dbt-docs` artifact. |
 | Architecture and lineage documented | The architecture diagram and hosted lineage screenshot are included above. |
 | Resume uses measured metrics | The bullet below separates CI fixture metrics from hosted Supabase metrics. |
 
 ### Resume-ready project bullet
 
-> Built and validated a 6-model dbt/Postgres football analytics star schema (2 staging views, 3 dimensions, 1 fact), preserving 40/40 hosted player-season rows across two idempotent Supabase builds with 74 data tests per build.
+> Built a 6-model dbt/Postgres football analytics star schema (2 staging views, 3 dimensions, 1 fact), automated 76 fixture-backed data tests in GitHub Actions, and preserved 40/40 hosted player-season rows across two idempotent Supabase builds with 74 hosted tests per build.
 
 ### Team history limitation
 

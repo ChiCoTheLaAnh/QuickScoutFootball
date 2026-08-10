@@ -70,6 +70,7 @@ Avoid:
 - Browser-only shortlist/comparison UX works without auth or database migrations
 - API-Football sync supports multiple configured player URLs, pagination with a page cap, de-dupe, and coverage metadata
 - Analytics Phase 0 validated against hosted Supabase on 2026-08-07: `dbt debug` passed; two consecutive builds each passed 6 models and 74 tests (`80/80`); 2 staging views and 4 mart tables preserve all 40 season-stat rows
+- Analytics Definition of Done closed in GitHub Actions on 2026-08-10: PostgreSQL 16 fixture, `dbt debug`, 6 models and 76 tests (`82/82`), exact `player_season_id` compatibility check, docs generation, and the four-file `dbt-docs` artifact all passed
 - Big Five ingestion filters every statistics block by exact league ID and season before multi-team aggregation
 - Canonical identity, target lookup/exclusion, and ranking tie-breaks use provider source plus provider player ID; legacy same-name ambiguity returns `409`
 - API-Football page-1 probes use actual page totals, complete fail-closed quota headers, 20% safety gates, cap 60, 6200ms pacing, and bounded retries; later missing headers use a monotonic conservative ledger
@@ -135,7 +136,7 @@ Planned focus:
 
 **Analytics Phase 0 — complete** (see [README.md](README.md))
 
-- Hosted validation and lineage documentation are complete; no additional analytics features are in Phase 0 scope
+- Hosted validation, canonical player-season identity, CI validation, generated docs, lineage documentation, and measured resume metrics are complete; no additional analytics features are in Phase 0 scope
 
 ---
 
