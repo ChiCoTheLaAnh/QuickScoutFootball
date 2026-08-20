@@ -1,30 +1,36 @@
 # QuickScout Football
 
-QuickScout Football is an MVP scouting intelligence app that helps identify football players worth tracking using seeded player profiles, season stats, and recommendation runs.
+QuickScout Football helps scouts find and rank replacement players with transparent, explainable scoring.
 
-## Project purpose
+**[Live Demo](https://quick-scout-football.vercel.app)**
 
-The goal is to provide a fast, explainable recommendation pipeline for scouting:
+## Overview
 
-- Store player entities with stable provider IDs and normalized names.
-- Track season-level performance metrics in a queryable table.
-- Persist recommendation job history for repeatability and analysis.
-- Keep the architecture lightweight while provider integrations mature.
+The Next.js application turns player profiles and season statistics into ranked recommendations, persisting data and recommendation runs in PostgreSQL through Supabase with a seed-data fallback for local use. dbt transforms the application-owned source tables into analytics-ready marts without changing the product's API contracts. The analytics fact grain is **player × season × competition**, with provider identity preserved in the underlying keys.
+
+| 6 dbt models | 74 dbt tests validated against hosted Supabase | Dimensional model |
+|:---:|:---:|:---:|
+| 2 staging views + 4 marts | Passed in each of two idempotent builds | 3 dimensions + 1 fact |
+
+## Architecture
+
+```mermaid
+flowchart LR
+  api[Next.js API] --> database[PostgreSQL / Supabase]
+  database --> staging[dbt staging]
+  staging --> marts[Analytics marts]
+```
+
+## Key capabilities
+
+- Explainable replacement-player ranking with candidate-level score breakdowns.
+- API-Football ingestion with Supabase persistence and a seed-data fallback.
+- Recommendation history and replay, shortlist comparison, and CSV export.
+- A tested dbt dimensional model for analytics and downstream reporting.
 
 ## Analytics architecture (dbt Phase 0)
 
 The application ingestion and recommendation paths remain unchanged. dbt reads the two existing PostgreSQL source tables after ingestion and builds an analytics-only star schema:
-
-```mermaid
-flowchart TD
-  provider[API-Football] --> ingestion[Existing Next.js ingestion]
-  ingestion --> sources["public.players + public.player_season_stats"]
-  sources --> staging[analytics_staging views]
-  staging --> dimensions["dim_player + dim_team + dim_league"]
-  staging --> fact[fact_player_season]
-  dimensions --> star[Analytics-ready star schema]
-  fact --> star
-```
 
 dbt creates these relations:
 
