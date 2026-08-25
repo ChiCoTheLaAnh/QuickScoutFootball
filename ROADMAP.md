@@ -155,6 +155,7 @@ Aligned with [README.md](README.md) provider integration plan.
 - [x] Add grain, metric, row-count, foreign-key, and exact-schema tests
 - [x] Add canonical `player_season_id` while preserving `fact_player_season_key` compatibility
 - [x] Run `dbt debug`, 6 models, 76 tests, key-alias validation, and docs generation in GitHub Actions (`82/82` passed on 2026-08-10)
+- [x] Add a recruiter-facing dbt lineage snapshot and fact grain/data-quality summary to README
 - [x] Document local operation and the current-team fallback limitation
 - [x] Validate `dbt debug` and two consecutive `dbt build` runs against hosted Supabase (`80/80` passed in both builds on 2026-08-07)
 

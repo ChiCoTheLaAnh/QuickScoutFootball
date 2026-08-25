@@ -45,9 +45,12 @@ dbt creates these relations:
 
 ### Analytics contract
 
-`fact_player_season` has one row per `provider_source × player × normalized_season × competition_identity`. The canonical `player_season_id` is the same deterministic value as the backward-compatible `fact_player_season_key`; both columns are tested as non-null and unique.
+![fact_player_season dbt lineage graph](docs/analytics/dbt-lineage.png)
 
-Referential-integrity tests cover all three layers: source season stats resolve to source players, staging season stats resolve to staging players, and every fact row resolves to `dim_player`, `dim_team`, and `dim_league`.
+- **Grain:** One row per `provider_source × player × normalized_season × competition_identity`.
+- **Data quality:** `not_null`/`unique` key checks, relationships to three dimensions, metric constraints, and row-count preservation from staging.
+
+The canonical `player_season_id` is the same deterministic value as the backward-compatible `fact_player_season_key`. Additional relationship tests ensure source season stats resolve to source players and staging season stats resolve to staging players.
 
 The project defines exactly two custom business-rule test macros:
 
@@ -75,8 +78,6 @@ Analytics Phase 0 was validated against hosted Supabase through the SSL-enabled 
 | Competition identities | 2 |
 
 Row preservation was exact: `40 staging rows = 40 fact rows`. Duplicate checks for `fact_player_season_key` and `source_stats_id` returned zero rows, and all fact keys resolved to their dimensions without nulls or orphans. This hosted run predates the additive `player_season_id` alias and therefore reports 74 rather than the current 76 tests.
-
-![Hosted dbt lineage graph](docs/analytics/dbt-lineage.png)
 
 ### Run dbt locally
 
