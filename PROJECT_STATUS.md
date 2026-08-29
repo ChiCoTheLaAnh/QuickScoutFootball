@@ -2,13 +2,13 @@
 
 ## Current Phase
 
-**Product Phase 4 — Scout Workflow UX core tasks complete; Data Phase 5 expanded provider coverage implemented**
+**Product Phase 5 — Scouting BI P1 complete; Data Phase 5 expanded provider coverage implemented**
 
 Data pipeline context (see [README.md](README.md)): **Phase 1 (Seed baseline)** is complete. **Phase 2 (Single provider sync)** is validated for API-Football against hosted Supabase.
 
 ## Objective Of Current Phase
 
-Turn the working recommender into a more useful scout workflow without adding auth or multi-provider complexity.
+Turn stable recommendation outputs into useful scout workflow and decision artifacts without adding auth or multi-provider complexity.
 
 Focus on:
 
@@ -17,6 +17,7 @@ Focus on:
 - CSV export for current and saved candidate lists
 - Seed-data-first local dev with optional Supabase persistence
 - Stable API contracts for players and recommendation runs
+- Decision-ready BI snapshots that reuse the existing scoring engine
 
 Avoid:
 
@@ -69,6 +70,7 @@ Avoid:
 - Playwright E2E covers the core recommendation flow plus history/detail/export and shortlist export
 - Browser-only shortlist/comparison UX works without auth or database migrations
 - API-Football sync supports multiple configured player URLs, pagination with a page cap, de-dupe, and coverage metadata
+- Excel scouting dashboard for the Mohamed Salah replacement scenario includes a ranked RW/LW shortlist, a fit-score chart, and two decision insights
 
 ## In Progress
 
@@ -104,10 +106,11 @@ The phase is complete when:
 
 # Next Phase
 
-**Product Phase 4 — Scout Workflow UX**
+**Product Phase 5 — Scouting BI**
 
 Planned focus:
 
+- Gather scout feedback on the first decision-ready workbook before expanding into live or reusable analytics
 - Additional CI/CD hardening after production smoke observations
 
 **Data Phase 4 — Automated refresh** (see [README.md](README.md))

@@ -1,6 +1,6 @@
 # Project Roadmap
 
-Priority order: **Product Phase 4 — Scout Workflow UX** is the next default focus after MVP, production readiness, and automated refresh validation. Avoid auth, provider reconciliation, and schema-heavy watchlists unless explicitly requested.
+Priority order: **Product Phase 5 — Scouting BI** follows the completed scout workflow core. Avoid auth, provider reconciliation, and schema-heavy watchlists unless explicitly requested.
 
 ---
 
@@ -82,6 +82,15 @@ Priority order: **Product Phase 4 — Scout Workflow UX** is the next default fo
 - [ ] Authentication and user accounts
 - [ ] Multi-provider conflict resolution
 - [ ] Schema-heavy watchlists or saved-team planning
+
+---
+
+# Product Phase 5 — Scouting BI
+
+## P1
+
+- [x] Create a decision-ready Excel dashboard from QuickScout seed data with a ranked candidate table, a score chart, and two scouting insights
+- [x] Keep the workbook snapshot aligned with the existing scoring engine and preserve API/schema contracts
 
 ---
 
