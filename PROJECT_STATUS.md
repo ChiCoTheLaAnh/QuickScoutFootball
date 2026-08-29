@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-**Final Big Five season 2024 production-proof rollout in progress; Product Phase 4 and Analytics Phase 0 remain complete**
+**Final Big Five season 2024 production-proof rollout in progress; Product Phase 5 Scouting BI P1 and Analytics Phase 0 are complete**
 
 Data pipeline context (see [README.md](README.md)): the identity-safe, quota-gated Big Five implementation is deployed cron-off. The additive global-lock migration has been applied and verified on hosted Supabase; staged backfill evidence is still pending.
 
@@ -17,6 +17,7 @@ Focus on:
 - Durable duplicate/concurrency protection for cron validation
 - Hosted canary, two idempotent backfills, dbt, audit, smoke/E2E, and 50-iteration performance proof
 - Removing the historical cron after one scheduled validation
+- Decision-ready BI snapshots that reuse the existing scoring engine
 
 Avoid:
 
@@ -80,6 +81,7 @@ Avoid:
 - Hosted `provider_sync_runs`, hardening, and provider-season global-lock migrations are applied; table access is limited to service-role reads/writes and claim/finalize RPC execution
 - Free staged provider guardrails are implemented locally: 60-page cap, probe-inclusive per-target gates, 6200ms request-start pacing, remaining-page quota checks, and a 285-second cron deadline
 - Conservative-ledger release `d87972a` is deployed as `dpl_FsvqBembHCz41KvWcAfWJSwgBw9f`; production smoke passed, Vercel cron list is empty, and all required production env names/scopes remain present
+- Excel scouting dashboard for the Mohamed Salah replacement scenario includes a ranked RW/LW shortlist, a fit-score chart, and two decision insights
 
 ## In Progress
 
@@ -125,6 +127,7 @@ The phase is complete when:
 Planned focus:
 
 - Complete the locked rollout and then stop feature development
+- Preserve the completed Product Phase 5 Scouting BI P1 snapshot; gather scout feedback before expanding into live or reusable analytics
 
 **Data Phase 4 — Automated refresh** (see [README.md](README.md))
 
