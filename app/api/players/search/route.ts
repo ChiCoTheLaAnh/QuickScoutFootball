@@ -40,6 +40,8 @@ export async function GET(req: Request) {
   try {
     const results = (await searchPlayers(q)).map((player) => ({
       id: player.id,
+      providerSource: player.provider,
+      providerPlayerId: player.providerPlayerId ?? player.id,
       fullName: player.fullName,
       team: player.team,
       position: player.position,

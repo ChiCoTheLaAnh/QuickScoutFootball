@@ -9,6 +9,10 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts', 'app/**/*.integration.test.ts'],
+    include: [
+      'src/**/*.test.ts',
+      'app/**/*.integration.test.ts',
+      'scripts/**/*.test.mjs',
+    ],
   },
 });

@@ -7,6 +7,8 @@ import type { Player, Recommendation, RecommendationMode, RecommendationRequest,
 
 type PlayerSearchResult = {
   id: string;
+  providerSource: string;
+  providerPlayerId: string;
   fullName: string;
   team?: string;
   position?: string;
@@ -62,6 +64,7 @@ type RecommendationRunDetail = RecommendationRunSummary & {
 const apiErrorMessages: Partial<Record<ApiErrorResponse['code'], string>> = {
   INVALID_RECOMMENDATION_REQUEST: 'Check the required fields and numeric filters, then try again.',
   TARGET_PLAYER_NOT_FOUND: 'Target player not found. Choose a player from the search suggestions or refine the name.',
+  TARGET_PLAYER_AMBIGUOUS: 'More than one player has that name. Choose the exact player from the search suggestions.',
   PLAYER_SEARCH_FAILED: 'Player search is temporarily unavailable. Try again shortly.',
 };
 
@@ -196,7 +199,7 @@ export default function HomePage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [role, setRole] = useState('');
   const [maxAge, setMaxAge] = useState('30');
-  const [maxMarketValueEur, setMaxMarketValueEur] = useState('60000000');
+  const [maxMarketValueEur, setMaxMarketValueEur] = useState('');
   const [minMinutes, setMinMinutes] = useState('900');
   const [mode, setMode] = useState<RecommendationMode>('like_for_like');
 
@@ -370,7 +373,12 @@ export default function HomePage() {
 
   const fillFormFromRequest = (request: RecommendationRequest) => {
     setTargetPlayerName(request.targetPlayerName);
-    setSelectedTarget(null);
+    setSelectedTarget(request.targetPlayerIdentity ? {
+      id: `${request.targetPlayerIdentity.providerSource}:${request.targetPlayerIdentity.providerPlayerId}`,
+      providerSource: request.targetPlayerIdentity.providerSource,
+      providerPlayerId: request.targetPlayerIdentity.providerPlayerId,
+      fullName: request.targetPlayerName,
+    } : null);
     setRole(request.role);
     setMaxAge(request.maxAge === null ? '' : String(request.maxAge));
     setMaxMarketValueEur(request.maxMarketValueEur === null ? '' : String(request.maxMarketValueEur));
@@ -423,6 +431,10 @@ export default function HomePage() {
     event.preventDefault();
     await runRecommendation({
       targetPlayerName,
+      targetPlayerIdentity: selectedTarget ? {
+        providerSource: selectedTarget.providerSource,
+        providerPlayerId: selectedTarget.providerPlayerId,
+      } : undefined,
       role,
       maxAge: parseNullableNumber(maxAge),
       maxMarketValueEur: parseNullableNumber(maxMarketValueEur),
@@ -515,7 +527,9 @@ export default function HomePage() {
                     >
                       <span className="font-medium">{player.fullName}</span>
                       <span className="ml-2 text-slate-500">
-                        {[player.position, player.team].filter(Boolean).join(' · ')}
+                        {[player.position, player.team, `${player.providerSource} #${player.providerPlayerId}`]
+                          .filter(Boolean)
+                          .join(' · ')}
                       </span>
                     </button>
                   </li>

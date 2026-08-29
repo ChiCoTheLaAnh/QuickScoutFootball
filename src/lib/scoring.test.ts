@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { Player } from './types';
 import {
+  calculateReplacementScore,
+  calculateSimilarityScore,
   cosineSimilarity,
   filterCandidatesByMode,
   normalizeValue,
@@ -51,6 +53,13 @@ describe('filterCandidatesByMode', () => {
     expect(filtered.every((candidate) => (candidate.marketValueEur ?? 0) <= 50_000_000)).toBe(true);
   });
 
+  it('keeps unknown market values in cheaper mode when no explicit budget filtered them out', () => {
+    const unknownValue = player({ id: 'unknown-value', marketValueEur: undefined, age: 25 });
+    const filtered = filterCandidatesByMode(target, [...candidates, unknownValue], 'cheaper');
+
+    expect(filtered.map((candidate) => candidate.id)).toEqual(['cheap', 'old', 'unknown-value']);
+  });
+
   it('keeps candidates younger than the target in young_upside mode', () => {
     const filtered = filterCandidatesByMode(target, candidates, 'young_upside');
     expect(filtered.map((candidate) => candidate.id)).toEqual(['cheap', 'young']);
@@ -59,5 +68,48 @@ describe('filterCandidatesByMode', () => {
 
   it('returns all candidates for like_for_like mode', () => {
     expect(filterCandidatesByMode(target, candidates, 'like_for_like')).toEqual(candidates);
+  });
+});
+
+describe('missing advanced metrics', () => {
+  const request = {
+    targetPlayerName: 'Target',
+    role: 'RW',
+    maxAge: null,
+    maxMarketValueEur: null,
+    minMinutes: null,
+    mode: 'like_for_like',
+  } as const;
+
+  it('omits xG from similarity when either player is missing it', () => {
+    const target = player({
+      id: 'target',
+      stats: { goals: 10, xG: 12, shots: 65, minutes: 1_750, assists: 5 },
+    });
+    const candidate = player({
+      id: 'candidate',
+      stats: { goals: 10, shots: 65, minutes: 1_750, assists: 5 },
+    });
+
+    expect(calculateSimilarityScore(target, candidate, 'striker')).toBeCloseTo(100);
+  });
+
+  it('omits missing xA from output instead of scoring it as an actual zero', () => {
+    const target = player({ id: 'target', stats: {} });
+    const sharedStats = {
+      goals: 10,
+      assists: 7.5,
+      keyPasses: 40,
+      shots: 50,
+      passAccuracyPct: 80,
+      minutes: 1_750,
+    };
+    const missingXa = player({ id: 'missing-xa', stats: sharedStats });
+    const actualZeroXa = player({ id: 'zero-xa', stats: { ...sharedStats, xA: 0 } });
+
+    const missingOutput = calculateReplacementScore(target, missingXa, request).output;
+    const zeroOutput = calculateReplacementScore(target, actualZeroXa, request).output;
+
+    expect(missingOutput).toBeGreaterThan(zeroOutput);
   });
 });

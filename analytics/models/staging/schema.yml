@@ -1,0 +1,94 @@
+version: 2
+
+models:
+  - name: stg_players
+    description: Typed and normalized view of public.players with no deduplication or business aggregation.
+    columns:
+      - name: source_player_id
+        data_tests:
+          - not_null
+          - unique
+      - name: provider_source
+        data_tests:
+          - not_null
+      - name: provider_player_id
+        data_tests:
+          - not_null
+      - name: player_natural_key
+        description: Deterministic key for provider_source × provider_player_id.
+        data_tests:
+          - not_null
+          - unique
+
+  - name: stg_player_season_stats
+    description: One-to-one normalized view of source stats. It never deduplicates or aggregates source rows.
+    columns:
+      - name: source_stats_id
+        data_tests:
+          - not_null
+          - unique
+      - name: source_player_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_players')
+                field: source_player_id
+      - name: provider_source
+        data_tests:
+          - not_null
+      - name: normalized_season
+        data_tests:
+          - not_null
+      - name: competition_identity
+        data_tests:
+          - not_null
+      - name: stats_grain_key
+        description: Deterministic key for provider_source × player_id × normalized season × competition identity.
+        data_tests:
+          - not_null
+          - unique
+      - name: appearances
+        data_tests: [non_negative]
+      - name: starts
+        data_tests: [non_negative]
+      - name: minutes
+        data_tests: [non_negative]
+      - name: goals
+        data_tests: [non_negative]
+      - name: assists
+        data_tests: [non_negative]
+      - name: expected_goals
+        data_tests: [non_negative]
+      - name: expected_assists
+        data_tests: [non_negative]
+      - name: shots
+        data_tests: [non_negative]
+      - name: shots_on_target
+        data_tests: [non_negative]
+      - name: key_passes
+        data_tests: [non_negative]
+      - name: pass_accuracy
+        data_tests:
+          - within_range:
+              arguments:
+                min_value: 0
+                max_value: 100
+      - name: dribbles_completed
+        data_tests: [non_negative]
+      - name: tackles
+        data_tests: [non_negative]
+      - name: interceptions
+        data_tests: [non_negative]
+      - name: aerial_duels_won
+        data_tests: [non_negative]
+      - name: yellow_cards
+        data_tests: [non_negative]
+      - name: red_cards
+        data_tests: [non_negative]
+      - name: clean_sheets
+        data_tests: [non_negative]
+      - name: goals_conceded
+        data_tests: [non_negative]
+      - name: saves
+        data_tests: [non_negative]

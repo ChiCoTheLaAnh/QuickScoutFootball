@@ -3,10 +3,13 @@ import { NextResponse } from 'next/server';
 export type ApiErrorCode =
   | 'INVALID_RECOMMENDATION_REQUEST'
   | 'TARGET_PLAYER_NOT_FOUND'
+  | 'TARGET_PLAYER_AMBIGUOUS'
   | 'PLAYER_SEARCH_FAILED'
   | 'RATE_LIMITED'
   | 'CRON_UNAUTHORIZED'
   | 'CRON_NOT_CONFIGURED'
+  | 'CRON_HEALTH_UNAVAILABLE'
+  | 'CRON_REFRESH_CLAIM_FAILED'
   | 'CRON_REFRESH_FAILED';
 
 export type ApiErrorResponse = {

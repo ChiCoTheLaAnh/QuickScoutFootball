@@ -2,21 +2,21 @@
 
 ## Current Phase
 
-**Product Phase 4 — Scout Workflow UX core tasks complete; Data Phase 5 expanded provider coverage implemented**
+**Final Big Five season 2024 production-proof rollout in progress; Product Phase 4 and Analytics Phase 0 remain complete**
 
-Data pipeline context (see [README.md](README.md)): **Phase 1 (Seed baseline)** is complete. **Phase 2 (Single provider sync)** is validated for API-Football against hosted Supabase.
+Data pipeline context (see [README.md](README.md)): the identity-safe, quota-gated Big Five implementation is deployed cron-off. The additive global-lock migration has been applied and verified on hosted Supabase; staged backfill evidence is still pending.
 
 ## Objective Of Current Phase
 
-Turn the working recommender into a more useful scout workflow without adding auth or multi-provider complexity.
+Finish the project with defensible production data volume while avoiding identity corruption and unnecessary provider quota use.
 
 Focus on:
 
-- Recommendation history using existing persisted runs
-- Recommendation run detail/replay from saved request and response payloads
-- CSV export for current and saved candidate lists
-- Seed-data-first local dev with optional Supabase persistence
-- Stable API contracts for players and recommendation runs
+- Exact Big Five league/season filtering and provider-pair identity
+- Safe quota probes and two-run backfill gates
+- Durable duplicate/concurrency protection for cron validation
+- Hosted canary, two idempotent backfills, dbt, audit, smoke/E2E, and 50-iteration performance proof
+- Removing the historical cron after one scheduled validation
 
 Avoid:
 
@@ -60,19 +60,31 @@ Avoid:
 - Search/recommendation routes include performance metadata, and `npm run perf:review` measures endpoint latency and payload size
 - README includes a quick start for scouts
 - Hosted API-Football sync validated against Supabase (`fetched: 20`, `transformed: 20`, `playersUpserted: 20`, `statsUpserted: 20`, `skipped: 0`)
-- Automated API-Football cron refresh calls the validated sync path and logs refresh summaries/failures
-- Automated refresh health tracks last success/failure, stale status, and emits alert-ready structured logs plus an authenticated health endpoint
-- Production cron refresh validation completed after deploy (`GET /api/cron/refresh` 200, followed by cron health smoke validation)
+- The earlier single-target API-Football cron refresh called the validated sync path and logged refresh summaries/failures
+- Persisted refresh health tracks the latest run plus the latest success/failure, stale status, and emits alert-ready structured logs plus an authenticated health endpoint
+- Earlier single-target production cron validation completed before this final milestone (`GET /api/cron/refresh` 200, followed by cron health smoke validation)
 - Recommendation history UI uses existing persisted recommendation runs
 - Recommendation run detail/replay view uses saved request and response payloads
 - CSV export is available for current results and saved run results
 - Playwright E2E covers the core recommendation flow plus history/detail/export and shortlist export
 - Browser-only shortlist/comparison UX works without auth or database migrations
 - API-Football sync supports multiple configured player URLs, pagination with a page cap, de-dupe, and coverage metadata
+- Analytics Phase 0 validated against hosted Supabase on 2026-08-07: `dbt debug` passed; two consecutive builds each passed 6 models and 74 tests (`80/80`); 2 staging views and 4 mart tables preserve all 40 season-stat rows
+- Analytics Definition of Done closed in GitHub Actions on 2026-08-10: PostgreSQL 16 fixture, `dbt debug`, 6 models and 76 tests (`82/82`), exact `player_season_id` compatibility check, docs generation, and the four-file `dbt-docs` artifact all passed
+- Big Five ingestion filters every statistics block by exact league ID and season before multi-team aggregation
+- Canonical identity, target lookup/exclusion, and ranking tie-breaks use provider source plus provider player ID; legacy same-name ambiguity returns `409`
+- API-Football page-1 probes use actual page totals, complete fail-closed quota headers, 20% safety gates, cap 60, 6200ms pacing, and bounded retries; later missing headers use a monotonic conservative ledger
+- Provider writes are batched at 250 players and 500 facts; app reads use 500-row player cursors and 100-ID stat chunks with concurrency four
+- Persisted `provider_sync_runs` claims protect the global `apiFootball:2024` quota scope across manual and cron runs; lock losers make zero provider calls and health reads persisted state
+- Current merged tree passes 138 unit/integration tests (2 environment-gated skips), typecheck, lint, production build, exact-identity E2E, production-mode smoke, and 3+50 endpoint benchmarks
+- Hosted `provider_sync_runs`, hardening, and provider-season global-lock migrations are applied; table access is limited to service-role reads/writes and claim/finalize RPC execution
+- Free staged provider guardrails are implemented locally: 60-page cap, probe-inclusive per-target gates, 6200ms request-start pacing, remaining-page quota checks, and a 285-second cron deadline
+- Conservative-ledger release `d87972a` is deployed as `dpl_FsvqBembHCz41KvWcAfWJSwgBw9f`; production smoke passed, Vercel cron list is empty, and all required production env names/scopes remain present
 
 ## In Progress
 
-- None
+- Run two local staged passes across daily quota windows, followed by two dbt builds and production acceptance
+- Capture one scheduled cron/duplicate/health proof, then remove the schedule and temporary performance secret
 
 ## Not Started (This Phase Or Later)
 
@@ -84,7 +96,11 @@ Avoid:
 
 - None critical for local MVP development
 - None for Data Phase 2 or automated refresh validation
-- Expanded provider coverage requires production env configuration (`API_FOOTBALL_PLAYERS_URLS`) and operator validation before it changes live data volume
+- Free staged rollout is approved: cap 60, 6200ms request start pacing, one target per daily quota gate, and two passes over four or more quota windows each
+- Cron remains disabled until the final Bundesliga `78` proof; production provider/database secrets must be preserved through that proof
+- Two earlier Pass 1 Day 1 attempts failed closed when API-Football omitted later-page quota headers; they made no hosted player/fact writes
+- The 2026-08-10 retry passed its page-1 probe but API-Football rejected page 4 because Free plans permit a maximum Page value of 3. The run finalized as failed, released the global lock, and made zero player/fact writes
+- League-level Free staged rollout is now externally blocked regardless of quota-window reset. Do not retry or redesign requests (for example, team-scoped partitioning) without explicit approval
 
 ---
 
@@ -104,19 +120,23 @@ The phase is complete when:
 
 # Next Phase
 
-**Product Phase 4 — Scout Workflow UX**
+**Final milestone — Big Five production proof**
 
 Planned focus:
 
-- Additional CI/CD hardening after production smoke observations
+- Complete the locked rollout and then stop feature development
 
 **Data Phase 4 — Automated refresh** (see [README.md](README.md))
 
-- Continue monitoring cron health output and structured logs for stale data after deploys
+- Validate exactly one historical cron delivery and duplicate skip, then remove its schedule
 
 **Data Phase 5 — Expanded provider coverage** (see [README.md](README.md))
 
-- Configure expanded API-Football URL targets in production and validate larger sync counts
+- Backfill and audit all five Big Five league IDs for API-Football season 2024
+
+**Analytics Phase 0 — complete** (see [README.md](README.md))
+
+- Hosted validation, canonical player-season identity, CI validation, generated docs, lineage documentation, and measured resume metrics are complete; no additional analytics features are in Phase 0 scope
 
 ---
 

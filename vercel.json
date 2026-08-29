@@ -1,8 +1,4 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/refresh",
-      "schedule": "0 5 * * *"
-    }
-  ]
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "fluid": true
 }

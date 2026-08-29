@@ -8,6 +8,8 @@ export interface ProviderSeasonStats {
   season?: string;
   competition?: string;
   competitionProviderId?: string;
+  teamProviderId?: string;
+  teamProviderIds?: string[];
   appearances?: number;
   starts?: number;
   minutes?: number;
@@ -18,6 +20,7 @@ export interface ProviderSeasonStats {
   shots?: number;
   shotsOnTarget?: number;
   keyPasses?: number;
+  passesTotal?: number;
   passAccuracy?: number;
   dribblesCompleted?: number;
   tackles?: number;
@@ -39,7 +42,7 @@ export interface ProviderPlayerRecord {
   teamProviderId?: string;
   leagueName?: string;
   leagueProviderId?: string;
-  seasonStats?: ProviderSeasonStats;
+  seasonStats: ProviderSeasonStats[];
   metadata?: Record<string, unknown>;
 }
 

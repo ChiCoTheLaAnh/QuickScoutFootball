@@ -1,0 +1,81 @@
+version: 2
+
+models:
+  - name: dim_player
+    description: Current-state player dimension keyed by provider source and provider player ID.
+    columns:
+      - name: player_key
+        data_tests:
+          - not_null
+          - unique
+      - name: source_player_id
+        data_tests:
+          - not_null
+          - unique
+
+  - name: dim_team
+    description: Source-specific team dimension built from current players and season-stat team references.
+    columns:
+      - name: team_key
+        data_tests:
+          - not_null
+          - unique
+      - name: provider_source
+        data_tests:
+          - not_null
+      - name: team_identity
+        data_tests:
+          - not_null
+
+  - name: dim_league
+    description: Source-specific league/competition dimension built from current players and season stats.
+    columns:
+      - name: league_key
+        data_tests:
+          - not_null
+          - unique
+      - name: provider_source
+        data_tests:
+          - not_null
+      - name: league_identity
+        data_tests:
+          - not_null
+
+  - name: fact_player_season
+    description: One row per provider source × player × normalized season × competition identity, with no aggregation or deduplication.
+    columns:
+      - name: fact_player_season_key
+        description: Backward-compatible deterministic key for the player-season-competition grain.
+        data_tests:
+          - not_null
+          - unique
+      - name: player_season_id
+        description: Canonical alias of fact_player_season_key for the player-season-competition grain.
+        data_tests:
+          - not_null
+          - unique
+      - name: player_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_player')
+                field: player_key
+      - name: team_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_team')
+                field: team_key
+      - name: league_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_league')
+                field: league_key
+      - name: source_stats_id
+        data_tests:
+          - not_null
+          - unique

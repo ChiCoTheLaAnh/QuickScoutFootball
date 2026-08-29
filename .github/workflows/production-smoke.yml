@@ -22,6 +22,31 @@ on:
         required: true
         default: false
         type: boolean
+      run_e2e:
+        description: Run the exact-identity browser flow against this deployment
+        required: true
+        default: true
+        type: boolean
+      search_query:
+        description: Search text used to discover the exact target
+        required: true
+        default: salah
+        type: string
+      target_name:
+        description: Exact target display name
+        required: true
+        default: Mohamed Salah
+        type: string
+      target_provider_source:
+        description: Exact target provider source
+        required: true
+        default: apiFootball
+        type: string
+      target_provider_player_id:
+        description: Exact target provider player ID
+        required: true
+        default: '306'
+        type: string
 
 env:
   CI: true
@@ -35,6 +60,14 @@ jobs:
       SMOKE_SUPABASE: ${{ inputs.check_supabase_runs && '1' || '0' }}
       SMOKE_CRON_HEALTH: ${{ inputs.check_cron_health && '1' || '0' }}
       SMOKE_CRON_HEALTH_EXPECT_HEALTHY: ${{ inputs.expect_healthy_cron && '1' || '0' }}
+      SMOKE_SEARCH_QUERY: ${{ inputs.search_query }}
+      SMOKE_TARGET_NAME: ${{ inputs.target_name }}
+      SMOKE_TARGET_PROVIDER_SOURCE: ${{ inputs.target_provider_source }}
+      SMOKE_TARGET_PROVIDER_PLAYER_ID: ${{ inputs.target_provider_player_id }}
+      E2E_SEARCH_QUERY: ${{ inputs.search_query }}
+      E2E_TARGET_NAME: ${{ inputs.target_name }}
+      E2E_TARGET_PROVIDER_SOURCE: ${{ inputs.target_provider_source }}
+      E2E_TARGET_PROVIDER_PLAYER_ID: ${{ inputs.target_provider_player_id }}
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
 
     steps:
@@ -52,3 +85,11 @@ jobs:
 
       - name: Run smoke checks
         run: node scripts/smoke-test.mjs
+
+      - name: Install Playwright browser
+        if: ${{ inputs.run_e2e }}
+        run: npx playwright install --with-deps chromium
+
+      - name: Run production E2E
+        if: ${{ inputs.run_e2e }}
+        run: npm run test:e2e

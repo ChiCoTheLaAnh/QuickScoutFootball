@@ -41,3 +41,82 @@ jobs:
 
       - name: E2E tests
         run: npm run test:e2e
+
+  analytics:
+    name: dbt analytics
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: quickscout_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d quickscout_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DBT_HOST: localhost
+      DBT_PORT: '5432'
+      DBT_USER: postgres
+      DBT_PASSWORD: postgres
+      DBT_DBNAME: quickscout_ci
+      DBT_THREADS: '4'
+      DBT_SSLMODE: disable
+      PGPASSWORD: postgres
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: analytics/requirements.txt
+
+      - name: Install dbt
+        run: python -m pip install -r analytics/requirements.txt
+
+      - name: Prepare PostgreSQL fixture
+        run: |
+          psql --host "$DBT_HOST" --username "$DBT_USER" --dbname "$DBT_DBNAME" --set ON_ERROR_STOP=1 \
+            --command "create role anon nologin; create role authenticated nologin; create role service_role nologin;"
+          psql --host "$DBT_HOST" --username "$DBT_USER" --dbname "$DBT_DBNAME" --set ON_ERROR_STOP=1 \
+            --file supabase/schema.sql
+          psql --host "$DBT_HOST" --username "$DBT_USER" --dbname "$DBT_DBNAME" --set ON_ERROR_STOP=1 \
+            --file supabase/seed.sql
+
+      - name: dbt debug
+        run: dbt debug --project-dir analytics --profiles-dir analytics
+
+      - name: dbt build
+        run: dbt build --project-dir analytics --profiles-dir analytics
+
+      - name: Verify canonical player season key
+        run: |
+          mismatch_count="$(psql --host "$DBT_HOST" --username "$DBT_USER" --dbname "$DBT_DBNAME" \
+            --tuples-only --no-align \
+            --command "select count(*) from analytics_marts.fact_player_season where player_season_id is distinct from fact_player_season_key")"
+          test "$mismatch_count" = "0"
+
+      - name: Generate dbt docs
+        run: dbt docs generate --project-dir analytics --profiles-dir analytics
+
+      - name: Upload dbt docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-docs
+          path: |
+            analytics/target/index.html
+            analytics/target/catalog.json
+            analytics/target/manifest.json
+            analytics/target/run_results.json
+          if-no-files-found: error

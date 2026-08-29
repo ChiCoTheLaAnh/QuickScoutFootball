@@ -1,0 +1,47 @@
+version: 2
+
+sources:
+  - name: quickscout
+    description: Application-owned source tables populated by seed SQL or the existing Next.js provider ingestion flow.
+    schema: public
+    tables:
+      - name: players
+        description: Current player identity and current team/league attributes. This table remains owned by the application.
+        columns:
+          - name: id
+            data_tests:
+              - not_null
+              - unique
+          - name: provider_source
+            data_tests:
+              - not_null
+          - name: provider_player_id
+            data_tests:
+              - not_null
+          - name: full_name
+            data_tests:
+              - not_null
+          - name: normalized_name
+            data_tests:
+              - not_null
+
+      - name: player_season_stats
+        description: Player-season-competition statistics. Team name is intentionally absent from this source table.
+        columns:
+          - name: id
+            data_tests:
+              - not_null
+              - unique
+          - name: player_id
+            data_tests:
+              - not_null
+              - relationships:
+                  arguments:
+                    to: source('quickscout', 'players')
+                    field: id
+          - name: provider_source
+            data_tests:
+              - not_null
+          - name: season
+            data_tests:
+              - not_null

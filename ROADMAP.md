@@ -114,7 +114,7 @@ Aligned with [README.md](README.md) provider integration plan.
 - [x] Implement `GET /api/cron/refresh` ingestion job
 - [x] Wire Vercel cron (`vercel.json`) with monitoring
 - [x] Alert on failed ingestion / stale data
-- [x] Validate scheduled production cron run after deploy
+- [x] Validate the earlier single-target scheduled production cron run after deploy
 
 ## Phase 5 — Expanded API-Football coverage
 
@@ -123,6 +123,41 @@ Aligned with [README.md](README.md) provider integration plan.
 - [x] De-dupe provider players before transform/upsert
 - [x] Add coverage metadata to provider sync summaries
 - [x] Keep downstream app and recommendation API contracts unchanged
+
+## Final milestone — Big Five season 2024 production proof
+
+- [x] Restrict ingestion to exact Big Five league/season blocks before aggregation
+- [x] Preserve canonical identity by provider source and provider player ID across ingestion, search, selection, and ranking
+- [x] Aggregate multi-team facts and pass accuracy with pass-total/minutes weighting
+- [x] Add actual-page quota probes, 20% gates, fail-closed headers/cap, pacing, and bounded retries
+- [x] Add service-role-only persisted sync claims, duplicate suppression, deterministic cron rotation, and persisted health
+- [x] Scale Supabase reads and writes with cursor/chunk pagination and bounded batch/concurrency sizes
+- [x] Add canary/full audit, checksum, smoke, E2E, and 3+50 performance acceptance tooling
+- [x] Generate and apply the additive `provider_sync_runs` migration
+- [x] Add free staged per-target quota accounting, 6200ms pacing, cap 60, and the 285-second cron deadline
+- [x] Add conservative later-page quota ledger and atomic provider-season global lock
+- [ ] Deploy the canary release and configure all five production targets
+- [ ] Complete canary, probe, two full backfills, two dbt builds, hosted audits, and production performance evidence
+- [ ] Validate one scheduled cron plus same-day duplicate skip, then remove the cron schedule and performance secret
+- [ ] Record final production evidence and stop the project
+
+---
+
+# Analytics Pipeline
+
+## Phase 0 — dbt Analytics Foundation
+
+- [x] Keep `public.players` and `public.player_season_stats` as unchanged application-owned sources
+- [x] Add dbt Core/Postgres configuration with environment-based credentials
+- [x] Add staging views with normalized player and competition identities
+- [x] Add `dim_player`, `dim_team`, `dim_league`, and `fact_player_season`
+- [x] Share deterministic key and team fallback macros across dimensions and fact
+- [x] Add grain, metric, row-count, foreign-key, and exact-schema tests
+- [x] Add canonical `player_season_id` while preserving `fact_player_season_key` compatibility
+- [x] Run `dbt debug`, 6 models, 76 tests, key-alias validation, and docs generation in GitHub Actions (`82/82` passed on 2026-08-10)
+- [x] Add a recruiter-facing dbt lineage snapshot and fact grain/data-quality summary to README
+- [x] Document local operation and the current-team fallback limitation
+- [x] Validate `dbt debug` and two consecutive `dbt build` runs against hosted Supabase (`80/80` passed in both builds on 2026-08-07)
 
 ---
 

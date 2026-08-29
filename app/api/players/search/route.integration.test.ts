@@ -42,6 +42,21 @@ describe('GET /api/players/search (seed mode)', () => {
     const payload = await response.json();
     expect(payload.results.length).toBeGreaterThan(0);
     expect(payload.results[0].fullName).toContain('Salah');
+    expect(payload.results[0]).toMatchObject({
+      providerSource: 'seed',
+      providerPlayerId: 'seed-mohamed-salah',
+    });
+  });
+
+  it('caps broad searches at 12 deterministic identity-bearing results', async () => {
+    const response = await GET(new Request('http://localhost/api/players/search?q=a'));
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.results).toHaveLength(12);
+    expect(payload.results.every((player: Record<string, unknown>) => (
+      typeof player.providerSource === 'string'
+      && typeof player.providerPlayerId === 'string'
+    ))).toBe(true);
   });
 
   it('returns 429 after the per-IP search limit is exceeded', async () => {

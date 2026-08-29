@@ -41,6 +41,33 @@ describe('filterRecommendationCandidates', () => {
     expect(filtered).toEqual([eligible]);
   });
 
+  it('excludes an exact provider identity even when row ids differ', () => {
+    const providerTarget = player({
+      id: 'target-row-a',
+      provider: 'apiFootball',
+      providerPlayerId: '306',
+    });
+    const sameProviderPlayer = player({
+      id: 'target-row-b',
+      provider: 'apiFootball',
+      providerPlayerId: '306',
+    });
+    const sameNameDifferentIdentity = player({
+      id: 'other-row',
+      provider: 'apiFootball',
+      providerPlayerId: '999',
+      fullName: providerTarget.fullName,
+    });
+
+    const filtered = filterRecommendationCandidates(
+      providerTarget,
+      [sameProviderPlayer, sameNameDifferentIdentity],
+      { maxAge: null, maxMarketValueEur: null, minMinutes: null },
+    );
+
+    expect(filtered).toEqual([sameNameDifferentIdentity]);
+  });
+
   it('applies maxAge, maxMarketValueEur, and minMinutes filters', () => {
     const filtered = filterRecommendationCandidates(
       target,
@@ -62,5 +89,25 @@ describe('filterRecommendationCandidates', () => {
       'expensive',
       'low-min',
     ]);
+  });
+
+  it('keeps unknown market value without a budget and excludes it with an explicit budget', () => {
+    const unknownValue = player({
+      id: 'unknown-value',
+      age: 24,
+      marketValueEur: undefined,
+      stats: { minutes: 2_000 },
+    });
+
+    expect(filterRecommendationCandidates(
+      target,
+      [unknownValue],
+      { maxAge: null, maxMarketValueEur: null, minMinutes: null },
+    )).toEqual([unknownValue]);
+    expect(filterRecommendationCandidates(
+      target,
+      [unknownValue],
+      { maxAge: null, maxMarketValueEur: 50_000_000, minMinutes: null },
+    )).toEqual([]);
   });
 });

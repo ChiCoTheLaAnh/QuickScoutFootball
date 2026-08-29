@@ -1,6 +1,9 @@
 import type { ProviderPlayerRecord, ProviderSeasonStats } from '../provider/types';
 import { createServerSupabaseClient } from './server';
 
+export const PROVIDER_PLAYER_UPSERT_BATCH_SIZE = 250;
+export const PROVIDER_STATS_UPSERT_BATCH_SIZE = 500;
+
 export interface ProviderUpsertResult {
   playersUpserted: number;
   statsUpserted: number;
@@ -12,21 +15,22 @@ type PlayerUpsertRow = {
   slug: string;
   full_name: string;
   normalized_name: string;
-  age?: number;
-  nationality?: string;
-  primary_position?: string;
-  team_name?: string;
-  team_provider_id?: string;
-  league_name?: string;
-  league_provider_id?: string;
-  market_value_eur?: number;
+  age: number | null;
+  nationality: string | null;
+  primary_position: string | null;
+  team_name: string | null;
+  team_provider_id: string | null;
+  league_name: string | null;
+  league_provider_id: string | null;
+  market_value_eur: number | null;
   is_active: boolean;
-  metadata?: Record<string, unknown>;
+  metadata: Record<string, unknown>;
 };
 
 type PlayerUpsertResponse = {
   id: string;
   provider_player_id: string;
+  provider_source: string;
 };
 
 type ProviderStatsUpsertRow = {
@@ -34,29 +38,30 @@ type ProviderStatsUpsertRow = {
   provider_source: string;
   provider_stat_id: string;
   season: string;
-  competition?: string;
+  competition: string | null;
   competition_provider_id: string;
+  team_provider_id: string | null;
   appearances: number;
   starts: number;
   minutes: number;
   goals: number;
   assists: number;
-  expected_goals?: number;
-  expected_assists?: number;
+  expected_goals: number | null;
+  expected_assists: number | null;
   shots: number;
   shots_on_target: number;
   key_passes: number;
-  pass_accuracy?: number;
+  pass_accuracy: number | null;
   dribbles_completed: number;
   tackles: number;
   interceptions: number;
   aerial_duels_won: number;
   yellow_cards: number;
   red_cards: number;
-  clean_sheets?: number;
-  goals_conceded?: number;
-  saves?: number;
-  metadata?: Record<string, unknown>;
+  clean_sheets: number | null;
+  goals_conceded: number | null;
+  saves: number | null;
+  metadata: Record<string, unknown>;
 };
 
 export async function upsertProviderPlayers(records: ProviderPlayerRecord[]): Promise<ProviderUpsertResult> {
@@ -64,69 +69,80 @@ export async function upsertProviderPlayers(records: ProviderPlayerRecord[]): Pr
     return { playersUpserted: 0, statsUpserted: 0 };
   }
 
+  assertValidFactIdentities(records);
+
   const supabase = createServerSupabaseClient();
   if (!supabase) {
     throw new Error('Supabase is required for provider sync');
   }
 
-  const playerRows = records.map(toPlayerRow);
-  const { data: upsertedPlayers, error: playersError } = await supabase
-    .from('players')
-    .upsert(playerRows, { onConflict: 'provider_source,provider_player_id' })
-    .select('id, provider_player_id');
-
-  if (playersError) {
-    throw new Error(`Provider player upsert failed: ${playersError.message}`);
+  const canonicalRecords = new Map<string, ProviderPlayerRecord>();
+  for (const record of records) {
+    canonicalRecords.set(toCanonicalPairKey(record.providerSource, record.providerPlayerId), record);
   }
 
-  const playerIdsByProviderId = new Map(
-    ((upsertedPlayers ?? []) as PlayerUpsertResponse[])
-      .map((player) => [player.provider_player_id, player.id]),
-  );
+  const playerIdsByCanonicalPair = new Map<string, string>();
+  let playersUpserted = 0;
+  const playerRows = Array.from(canonicalRecords.values(), toPlayerRow);
 
-  const statRows = records.flatMap((record) => {
-    const playerId = playerIdsByProviderId.get(record.providerPlayerId);
-    if (!playerId || !record.seasonStats) return [];
-    return [toStatsRow(playerId, record.providerSource, record.seasonStats, record.metadata)];
-  });
+  for (const playerBatch of chunk(playerRows, PROVIDER_PLAYER_UPSERT_BATCH_SIZE)) {
+    const { data: upsertedPlayers, error: playersError } = await supabase
+      .from('players')
+      .upsert(playerBatch, { onConflict: 'provider_source,provider_player_id' })
+      .select('id, provider_source, provider_player_id');
 
-  if (statRows.length === 0) {
-    return {
-      playersUpserted: upsertedPlayers?.length ?? 0,
-      statsUpserted: 0,
-    };
+    if (playersError) {
+      throw new Error(`Provider player upsert failed: ${playersError.message}`);
+    }
+
+    const players = (upsertedPlayers ?? []) as PlayerUpsertResponse[];
+    playersUpserted += players.length;
+    for (const player of players) {
+      playerIdsByCanonicalPair.set(
+        toCanonicalPairKey(player.provider_source, player.provider_player_id),
+        player.id,
+      );
+    }
   }
 
-  const { data: upsertedStats, error: statsError } = await supabase
-    .from('player_season_stats')
-    .upsert(statRows, { onConflict: 'player_id,provider_source,season,competition_provider_id' })
-    .select('id');
+  const uniqueStatRows = new Map<string, ProviderStatsUpsertRow>();
+  for (const record of records) {
+    const canonicalPairKey = toCanonicalPairKey(record.providerSource, record.providerPlayerId);
+    const playerId = playerIdsByCanonicalPair.get(canonicalPairKey);
+    if (!playerId) continue;
 
-  if (statsError) {
-    throw new Error(`Provider stats upsert failed: ${statsError.message}`);
+    for (const stats of toSeasonStatsArray(record.seasonStats)) {
+      const row = toStatsRow(
+        playerId,
+        record.providerSource,
+        record.providerPlayerId,
+        stats,
+        record.metadata,
+      );
+      uniqueStatRows.set(toFactNaturalKey(row), row);
+    }
   }
 
-  return {
-    playersUpserted: upsertedPlayers?.length ?? 0,
-    statsUpserted: upsertedStats?.length ?? 0,
-  };
-}
+  let statsUpserted = 0;
+  for (const statsBatch of chunk(
+    Array.from(uniqueStatRows.values()),
+    PROVIDER_STATS_UPSERT_BATCH_SIZE,
+  )) {
+    const { data: upsertedStats, error: statsError } = await supabase
+      .from('player_season_stats')
+      .upsert(statsBatch, {
+        onConflict: 'player_id,provider_source,season,competition_provider_id',
+      })
+      .select('id');
 
-export async function getProviderLastSyncedAt(providerSource: string): Promise<string | null> {
-  const supabase = createServerSupabaseClient();
-  if (!supabase) return null;
+    if (statsError) {
+      throw new Error(`Provider stats upsert failed: ${statsError.message}`);
+    }
 
-  const { data, error } = await supabase
-    .from('players')
-    .select('updated_at')
-    .eq('provider_source', providerSource)
-    .order('updated_at', { ascending: false })
-    .limit(1);
+    statsUpserted += upsertedStats?.length ?? 0;
+  }
 
-  if (error || !data?.[0]) return null;
-
-  const updatedAt = (data[0] as { updated_at?: string | null }).updated_at;
-  return updatedAt ?? null;
+  return { playersUpserted, statsUpserted };
 }
 
 function toPlayerRow(record: ProviderPlayerRecord): PlayerUpsertRow {
@@ -136,54 +152,113 @@ function toPlayerRow(record: ProviderPlayerRecord): PlayerUpsertRow {
     slug: record.slug,
     full_name: record.player.fullName,
     normalized_name: record.normalizedName,
-    age: record.player.age,
-    nationality: record.player.nationality,
-    primary_position: record.player.position,
-    team_name: record.player.team,
-    team_provider_id: record.teamProviderId,
-    league_name: record.leagueName,
-    league_provider_id: record.leagueProviderId,
-    market_value_eur: record.player.marketValueEur,
+    age: record.player.age ?? null,
+    nationality: record.player.nationality ?? null,
+    primary_position: record.player.position ?? null,
+    team_name: record.player.team ?? null,
+    team_provider_id: record.teamProviderId ?? null,
+    league_name: record.leagueName ?? null,
+    league_provider_id: record.leagueProviderId ?? null,
+    market_value_eur: record.player.marketValueEur ?? null,
     is_active: true,
-    metadata: record.metadata,
+    metadata: record.metadata ?? {},
   };
 }
 
 function toStatsRow(
   playerId: string,
   providerSource: string,
+  providerPlayerId: string,
   stats: ProviderSeasonStats,
   metadata?: Record<string, unknown>,
 ): ProviderStatsUpsertRow {
+  const season = requireFactIdentityValue(stats.season, 'season');
+  const competitionProviderId = requireFactIdentityValue(
+    stats.competitionProviderId,
+    'competitionProviderId',
+  );
   return {
     player_id: playerId,
     provider_source: providerSource,
-    provider_stat_id: [providerSource, playerId, stats.season, stats.competitionProviderId]
-      .filter(Boolean)
-      .join(':'),
-    season: stats.season ?? 'unknown',
-    competition: stats.competition,
-    competition_provider_id: stats.competitionProviderId ?? 'unknown',
+    provider_stat_id: [providerSource, providerPlayerId, season, competitionProviderId].join(':'),
+    season,
+    competition: stats.competition ?? null,
+    competition_provider_id: competitionProviderId,
+    team_provider_id: stats.teamProviderId ?? null,
     appearances: stats.appearances ?? 0,
     starts: stats.starts ?? 0,
     minutes: stats.minutes ?? 0,
     goals: stats.goals ?? 0,
     assists: stats.assists ?? 0,
-    expected_goals: stats.expectedGoals,
-    expected_assists: stats.expectedAssists,
+    expected_goals: stats.expectedGoals ?? null,
+    expected_assists: stats.expectedAssists ?? null,
     shots: stats.shots ?? 0,
     shots_on_target: stats.shotsOnTarget ?? 0,
     key_passes: stats.keyPasses ?? 0,
-    pass_accuracy: stats.passAccuracy,
+    pass_accuracy: stats.passAccuracy ?? null,
     dribbles_completed: stats.dribblesCompleted ?? 0,
     tackles: stats.tackles ?? 0,
     interceptions: stats.interceptions ?? 0,
     aerial_duels_won: stats.aerialDuelsWon ?? 0,
     yellow_cards: stats.yellowCards ?? 0,
     red_cards: stats.redCards ?? 0,
-    clean_sheets: stats.cleanSheets,
-    goals_conceded: stats.goalsConceded,
-    saves: stats.saves,
-    metadata,
+    clean_sheets: stats.cleanSheets ?? null,
+    goals_conceded: stats.goalsConceded ?? null,
+    saves: stats.saves ?? null,
+    metadata: {
+      ...(metadata ?? {}),
+      ...(stats.teamProviderIds ? { teamProviderIds: stats.teamProviderIds } : {}),
+      ...(stats.passesTotal !== undefined ? { passesTotal: stats.passesTotal } : {}),
+    },
   };
+}
+
+function toSeasonStatsArray(
+  seasonStats: ProviderPlayerRecord['seasonStats'],
+): ProviderSeasonStats[] {
+  return seasonStats;
+}
+
+function assertValidFactIdentities(records: ProviderPlayerRecord[]): void {
+  for (const record of records) {
+    for (const stats of record.seasonStats) {
+      requireFactIdentityValue(
+        stats.season,
+        `season for ${record.providerSource}:${record.providerPlayerId}`,
+      );
+      requireFactIdentityValue(
+        stats.competitionProviderId,
+        `competitionProviderId for ${record.providerSource}:${record.providerPlayerId}`,
+      );
+    }
+  }
+}
+
+function requireFactIdentityValue(value: string | undefined, label: string): string {
+  const normalized = value?.trim();
+  if (!normalized) {
+    throw new Error(`Provider season fact requires a non-blank ${label}`);
+  }
+  return normalized;
+}
+
+function toCanonicalPairKey(providerSource: string, providerPlayerId: string): string {
+  return JSON.stringify([providerSource, providerPlayerId]);
+}
+
+function toFactNaturalKey(row: ProviderStatsUpsertRow): string {
+  return JSON.stringify([
+    row.player_id,
+    row.provider_source,
+    row.season,
+    row.competition_provider_id,
+  ]);
+}
+
+function chunk<T>(values: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < values.length; index += size) {
+    chunks.push(values.slice(index, index + size));
+  }
+  return chunks;
 }

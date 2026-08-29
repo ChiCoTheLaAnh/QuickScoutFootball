@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 
+import { assertTargetIdentity, selectUniqueTarget } from './acceptance-helpers.mjs';
+
 const baseUrl = (process.env.BASE_URL ?? 'http://localhost:3000').replace(/\/$/, '');
 const checkSupabaseRuns = process.env.SMOKE_SUPABASE === '1';
 const checkCronHealth = process.env.SMOKE_CRON_HEALTH === '1';
 const expectHealthyCron = process.env.SMOKE_CRON_HEALTH_EXPECT_HEALTHY === '1';
+const smokeSearchQuery = process.env.SMOKE_SEARCH_QUERY?.trim() || 'salah';
 
-const validRecommendBody = {
-  targetPlayerName: 'Mohamed Salah',
+const recommendFilters = {
   role: 'RW',
   maxAge: 30,
-  maxMarketValueEur: 60_000_000,
+  maxMarketValueEur: null,
   minMinutes: 900,
   mode: 'like_for_like',
 };
@@ -39,10 +41,21 @@ async function main() {
   assert(home.response.ok, `GET / failed (${home.response.status})`);
   assert(home.text.includes('QuickScout'), 'GET / missing app title');
 
-  const search = await request('/api/players/search?q=salah');
+  const search = await request(`/api/players/search?q=${encodeURIComponent(smokeSearchQuery)}`);
   assert(search.response.ok, `GET /api/players/search failed (${search.response.status})`);
   assert(Array.isArray(search.json?.results), 'Search response missing results array');
-  assert(search.json.results.length > 0, 'Search returned no players for "salah"');
+  assert(search.json.results.length > 0, `Search returned no players for "${smokeSearchQuery}"`);
+  const target = selectUniqueTarget(search.json.results, {
+    targetName: process.env.SMOKE_TARGET_NAME?.trim() || 'Mohamed Salah',
+    targetProviderSource: process.env.SMOKE_TARGET_PROVIDER_SOURCE,
+    targetProviderPlayerId: process.env.SMOKE_TARGET_PROVIDER_PLAYER_ID,
+    configurationPrefix: 'SMOKE',
+  });
+  const validRecommendBody = {
+    targetPlayerName: target.fullName,
+    targetPlayerIdentity: target.targetPlayerIdentity,
+    ...recommendFilters,
+  };
 
   const recommend = await request('/api/recommend', {
     method: 'POST',
@@ -51,6 +64,7 @@ async function main() {
   });
   assert(recommend.response.ok, `POST /api/recommend failed (${recommend.response.status}): ${recommend.text}`);
   assert(recommend.json?.target?.fullName, 'Recommend response missing target');
+  assertTargetIdentity(recommend.json.target, target.targetPlayerIdentity);
   assert(
     Array.isArray(recommend.json?.recommendations) && recommend.json.recommendations.length > 0,
     'Recommend response missing recommendations',
@@ -66,7 +80,10 @@ async function main() {
   const notFound = await request('/api/recommend', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...validRecommendBody, targetPlayerName: 'Nonexistent Player XYZ' }),
+    body: JSON.stringify({
+      targetPlayerName: 'Nonexistent Player XYZ',
+      ...recommendFilters,
+    }),
   });
   assert(notFound.response.status === 404, `Expected 404 for unknown player, got ${notFound.response.status}`);
 
