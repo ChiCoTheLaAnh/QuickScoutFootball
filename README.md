@@ -28,6 +28,17 @@ flowchart LR
 - Recommendation history and replay, shortlist comparison, and CSV export.
 - A tested dbt dimensional model for analytics and downstream reporting.
 
+## Scouting Decision Dashboard
+
+This seed snapshot presents a Mohamed Salah replacement scenario using QuickScout's existing scoring engine and an eligible RW/LW shortlist.
+
+![QuickScout Scouting Decision Dashboard for the Mohamed Salah replacement scenario](docs/scouting/salah-replacement-dashboard.png)
+
+[Open the Excel workbook](outputs/01a04979-c038-7a11-801a-3d6837e26dc8/quickscout-salah-scouting-dashboard.xlsx)
+
+1. Nico Williams ranks #1 at 86.3/100, age 23, with the highest age-upside score (90).
+2. Khvicha Kvaratskhelia leads similarity (99.0) and role output (79.6), but costs EUR 20m more than Nico Williams for only a 0.01 score difference.
+
 ## Analytics architecture (dbt Phase 0)
 
 The application ingestion and recommendation paths remain unchanged. dbt reads the two existing PostgreSQL source tables after ingestion and builds an analytics-only star schema:
