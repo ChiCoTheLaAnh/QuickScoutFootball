@@ -152,6 +152,77 @@ The first complete CI acceptance run passed on 2026-08-10: [`dbt analytics` run 
 
 `public.player_season_stats` has `team_provider_id` but no `team_name`. A historical team ID is retained in `dim_team`, but its name is null when that ID does not match the player's current team. When a stats row has no team ID, dbt falls back to the current team in `players`; after a transfer, that fallback may not represent the historical team. Phase 0 documents this limitation instead of changing the application source schema.
 
+## Airflow orchestration (Analytics Phase 1)
+
+The `airflow/` subsystem is a local learning and evidence environment, not a production deployment. Docker Compose runs Airflow 3.3.1 on Python 3.11, a dedicated Airflow metadata database, and a separate PostgreSQL 16 database loaded only from `supabase/schema.sql` and `supabase/seed.sql`. It does not call provider APIs or hosted Supabase.
+
+The daily `quickscout_analytics` TaskFlow DAG can also be triggered manually. It has `catchup=False`, `max_active_runs=1`, and this dependency chain:
+
+```text
+validate_source_data → retry_probe → dbt_build → dbt_test → verify_idempotency → summarize_run
+```
+
+TaskFlow return values create the dependencies and carry only small counts, checksums, and status fields through XCom. Every task inherits two retries with a 15-second retry delay. A non-zero dbt command fails its task and prevents downstream work until Airflow exhausts retries. With manual config `{"simulate_retry": true}`, `retry_probe` deliberately fails only its first attempt; its retry logs recovery and continues. Structured task logs include the DAG, run, task, attempt, event, and safe result fields.
+
+Implementation references: [TaskFlow tutorial](https://airflow.apache.org/docs/apache-airflow/stable/tutorial/taskflow.html), [task retries](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/tasks.html), and [task logging](https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/logging-tasks.html).
+
+### Run locally
+
+Docker Desktop should have at least 4 GB of memory available. From the repository root:
+
+```bash
+docker compose -f airflow/docker-compose.yml build
+docker compose -f airflow/docker-compose.yml up airflow-init
+docker compose -f airflow/docker-compose.yml up -d \
+  airflow-apiserver airflow-scheduler airflow-dag-processor airflow-triggerer
+docker compose -f airflow/docker-compose.yml exec airflow-scheduler \
+  airflow dags unpause quickscout_analytics
+```
+
+Open `http://localhost:8080` and sign in with the local-only credentials `airflow` / `airflow`. Trigger the retry proof and then the normal idempotency rerun:
+
+```bash
+docker compose -f airflow/docker-compose.yml exec airflow-scheduler \
+  airflow dags trigger quickscout_analytics \
+  --run-id retry-demo \
+  --conf '{"simulate_retry": true}'
+
+docker compose -f airflow/docker-compose.yml exec airflow-scheduler \
+  airflow dags trigger quickscout_analytics \
+  --run-id idempotency-demo \
+  --conf '{"simulate_retry": false}'
+```
+
+Validate the DAG contract and import state inside the image:
+
+```bash
+docker compose -f airflow/docker-compose.yml exec airflow-scheduler \
+  python -m unittest discover -s /opt/airflow/quickscout/airflow/tests -v
+docker compose -f airflow/docker-compose.yml exec airflow-scheduler \
+  airflow dags list-import-errors --output json
+```
+
+Named PostgreSQL volumes preserve the fixture between runs. `docker compose -f airflow/docker-compose.yml down` stops the environment without deleting that data; adding `--volumes` resets both local databases.
+
+### Recorded evidence
+
+![QuickScout Airflow DAG graph with six TaskFlow tasks](docs/airflow/dag-graph.png)
+
+![Successful idempotent Airflow run](docs/airflow/successful-run.png)
+
+![Airflow retry recovery with retry_probe on try number 2](docs/airflow/retry-recovery.png)
+
+Evidence was recorded on 2026-08-31 UTC against the same local PostgreSQL volume:
+
+| Run | Result | dbt evidence | Idempotency evidence |
+|---|---|---|---|
+| `retry-evidence-20260831` | Success after one intentional `retry_probe` failure | `dbt build`: 82/82; `dbt test`: 76/76 | 20 fact rows, 0 duplicates, checksum `99f8391f2323b5bd41a890804fba1de5` |
+| `idempotency-evidence-20260831` | Success with no simulated failure | `dbt build`: 82/82; `dbt test`: 76/76 | Same 20 fact rows and checksum, 0 duplicates, status `verified` |
+
+Sanitized logs: [attempt 1 intentional failure](docs/airflow/evidence/retry-attempt-1.log), [attempt 2 recovery](docs/airflow/evidence/retry-attempt-2.log), and [idempotent rerun](docs/airflow/evidence/idempotent-rerun.log).
+
+These are correctness results only. Airflow execution durations shown in the UI are runtime metadata, not claimed performance measurements.
+
 ## Local setup
 
 1. Install dependencies:

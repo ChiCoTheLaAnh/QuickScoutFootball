@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-**Final Big Five season 2024 production-proof rollout in progress; Product Phase 5 Scouting BI P1 and Analytics Phase 0 are complete**
+**Final Big Five season 2024 production-proof rollout in progress; Product Phase 5 Scouting BI P1 and Analytics Phase 1 local orchestration proof are complete**
 
 Data pipeline context (see [README.md](README.md)): the identity-safe, quota-gated Big Five implementation is deployed cron-off. The additive global-lock migration has been applied and verified on hosted Supabase; staged backfill evidence is still pending.
 
@@ -72,6 +72,8 @@ Avoid:
 - API-Football sync supports multiple configured player URLs, pagination with a page cap, de-dupe, and coverage metadata
 - Analytics Phase 0 validated against hosted Supabase on 2026-08-07: `dbt debug` passed; two consecutive builds each passed 6 models and 74 tests (`80/80`); 2 staging views and 4 mart tables preserve all 40 season-stat rows
 - Analytics Definition of Done closed in GitHub Actions on 2026-08-10: PostgreSQL 16 fixture, `dbt debug`, 6 models and 76 tests (`82/82`), exact `player_season_id` compatibility check, docs generation, and the four-file `dbt-docs` artifact all passed
+- Analytics Phase 1 local orchestration proof completed on 2026-08-31 UTC: Airflow 3.3.1 ran the six-task `quickscout_analytics` DAG; `dbt build` passed 82/82 and the explicit `dbt test` passed 76/76; an intentional first-attempt failure recovered on retry
+- A second Airflow run on the same PostgreSQL volume preserved 20 fact rows and checksum `99f8391f2323b5bd41a890804fba1de5` with zero duplicate keys; screenshots and sanitized logs are recorded in `docs/airflow/`
 - Big Five ingestion filters every statistics block by exact league ID and season before multi-team aggregation
 - Canonical identity, target lookup/exclusion, and ranking tie-breaks use provider source plus provider player ID; legacy same-name ambiguity returns `409`
 - API-Football page-1 probes use actual page totals, complete fail-closed quota headers, 20% safety gates, cap 60, 6200ms pacing, and bounded retries; later missing headers use a monotonic conservative ledger
@@ -140,6 +142,10 @@ Planned focus:
 **Analytics Phase 0 — complete** (see [README.md](README.md))
 
 - Hosted validation, canonical player-season identity, CI validation, generated docs, lineage documentation, and measured resume metrics are complete; no additional analytics features are in Phase 0 scope
+
+**Analytics Phase 1 — local orchestration proof complete** (see [README.md](README.md))
+
+- Airflow TaskFlow scheduling, dependencies, retries, logging, dbt execution, retry recovery, and fixture-backed idempotency evidence are complete; this local Compose environment does not change the Final Big Five production priority
 
 ---
 

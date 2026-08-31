@@ -1,0 +1,7 @@
+Source: airflow/logs/dag_id=quickscout_analytics/run_id=retry-evidence-20260831/task_id=retry_probe/attempt=2.log
+Captured: 2026-08-31 UTC
+
+2026-08-31T04:03:08.320891Z INFO quickscout_airflow={"attempt":2,"dag_id":"quickscout_analytics","event":"retry_probe.started","run_id":"retry-evidence-20260831","simulate_retry":true,"task_id":"retry_probe","try_number":2}
+2026-08-31T04:03:08.320973Z INFO quickscout_airflow={"attempt":2,"dag_id":"quickscout_analytics","event":"retry_probe.completed","retry_status":"recovered","run_id":"retry-evidence-20260831","task_id":"retry_probe"}
+Final task state: success
+Final DAG state: success

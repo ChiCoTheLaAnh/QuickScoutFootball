@@ -168,6 +168,15 @@ Aligned with [README.md](README.md) provider integration plan.
 - [x] Document local operation and the current-team fallback limitation
 - [x] Validate `dbt debug` and two consecutive `dbt build` runs against hosted Supabase (`80/80` passed in both builds on 2026-08-07)
 
+## Phase 1 — Airflow Orchestration
+
+- [x] Add a local Airflow 3.3.1/Python 3.11 TaskFlow environment with separate Airflow metadata and QuickScout PostgreSQL 16 databases
+- [x] Add the six-task daily `quickscout_analytics` DAG with explicit dependencies, structured logging, and two retries per task
+- [x] Run `dbt build` and `dbt test` successfully through the DAG against the local SQL fixture
+- [x] Prove one intentional task failure recovers on retry and preserves downstream execution
+- [x] Prove a second run on the same PostgreSQL volume preserves fact row count/checksum with zero duplicate keys
+- [x] Record the DAG, successful run, retry recovery, and sanitized logs in README and `docs/airflow/`
+
 ---
 
 # Future Ideas

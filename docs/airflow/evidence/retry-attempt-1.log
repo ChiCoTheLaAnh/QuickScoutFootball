@@ -1,0 +1,7 @@
+Source: airflow/logs/dag_id=quickscout_analytics/run_id=retry-evidence-20260831/task_id=retry_probe/attempt=1.log
+Captured: 2026-08-31 UTC
+
+2026-08-31T04:02:52.861967Z INFO quickscout_airflow={"attempt":1,"dag_id":"quickscout_analytics","event":"retry_probe.started","run_id":"retry-evidence-20260831","simulate_retry":true,"task_id":"retry_probe","try_number":1}
+2026-08-31T04:02:52.862049Z INFO quickscout_airflow={"attempt":1,"dag_id":"quickscout_analytics","event":"retry_probe.intentional_failure","run_id":"retry-evidence-20260831","task_id":"retry_probe"}
+2026-08-31T04:02:52.862125Z ERROR RuntimeError: Intentional first-attempt failure for retry evidence
+Final task state after this attempt: up_for_retry

@@ -11,4 +11,9 @@ analytics/target/
 analytics/logs/
 analytics/dbt_packages/
 analytics/.user.yml
+airflow/logs/
+airflow/config/
+airflow/airflow.cfg
+__pycache__/
+*.py[cod]
 *.tsbuildinfo

@@ -1,0 +1,9 @@
+Run ID: idempotency-evidence-20260831
+Captured: 2026-08-31 UTC
+Final DAG state: success
+
+dbt build: Finished running 4 table models, 76 data tests, 2 view models.
+dbt build: PASS=82 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=82
+dbt test: Finished running 76 data tests.
+dbt test: PASS=76 WARN=0 ERROR=0 SKIP=0 NO-OP=0 REUSED=0 TOTAL=76
+pipeline.completed: dbt_build=success dbt_test=success retry_status=not_requested row_count=20 duplicate_count=0 checksum=99f8391f2323b5bd41a890804fba1de5 idempotency_status=verified
