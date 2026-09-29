@@ -1,0 +1,36 @@
+name: Analytics health
+
+on:
+  schedule:
+    - cron: '47 8,20 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: quickscout-analytics-health
+  cancel-in-progress: false
+
+jobs:
+  watchdog:
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name != 'schedule' || vars.ANALYTICS_SCHEDULE_ENABLED == 'true') }}
+    runs-on: ubuntu-latest
+    env:
+      DBT_HOST: ${{ secrets.DBT_HOST }}
+      DBT_PORT: ${{ secrets.DBT_PORT }}
+      DBT_USER: ${{ secrets.DBT_USER }}
+      DBT_PASSWORD: ${{ secrets.DBT_PASSWORD }}
+      DBT_DBNAME: ${{ secrets.DBT_DBNAME }}
+      DBT_SSLMODE: require
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: analytics/requirements.txt
+      - run: python -m pip install -r analytics/requirements.txt
+      - run: python scripts/analytics_operations.py watchdog

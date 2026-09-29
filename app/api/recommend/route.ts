@@ -3,9 +3,8 @@ import { NextResponse } from 'next/server';
 import { apiError } from '@/src/lib/apiErrors';
 import { logServerEvent } from '@/src/lib/logging';
 import { checkRateLimit, rateLimitPolicies } from '@/src/lib/rateLimit';
-import { filterRecommendationCandidates } from '@/src/lib/recommendCandidates';
 import { isValidRecommendationRequest } from '@/src/lib/recommendationRequest';
-import { calculateReplacementScore, explainRecommendation, filterCandidatesByMode } from '@/src/lib/scoring';
+import { rankRecommendations } from '@/src/lib/recommendations';
 import { createRecommendationRun } from '@/src/lib/supabase/recommendationRuns';
 import {
   AmbiguousPlayerNameError,
@@ -13,7 +12,7 @@ import {
   getPlayerByName,
   getPlayers,
 } from '@/src/lib/supabase/players';
-import type { Recommendation, RecommendationResponse } from '@/src/lib/types';
+import type { RecommendationResponse } from '@/src/lib/types';
 
 export async function POST(req: Request) {
   const startedAt = Date.now();
@@ -95,31 +94,8 @@ export async function POST(req: Request) {
 
     const players = await getPlayers();
 
-    const filteredCandidates = filterCandidatesByMode(
-      target,
-      filterRecommendationCandidates(target, players, json),
-      json.mode,
-    );
-
-    const recommendations: Recommendation[] = filteredCandidates
-      .map((candidate) => {
-        const scoreBreakdown = calculateReplacementScore(target, candidate, json);
-        return {
-          player: candidate,
-          score: scoreBreakdown.total,
-          reasons: explainRecommendation(target, candidate, scoreBreakdown),
-          confidence: Math.max(0, Math.min(1, scoreBreakdown.total / 100)),
-          candidateType: json.mode,
-          breakdown: scoreBreakdown,
-        };
-      })
-      .sort((a, b) => (
-        b.score - a.score
-        || a.player.provider.localeCompare(b.player.provider)
-        || (a.player.providerPlayerId ?? a.player.id)
-          .localeCompare(b.player.providerPlayerId ?? b.player.id)
-      ))
-      .slice(0, 10);
+    const ranked = rankRecommendations(target, players, json);
+    const { recommendations } = ranked;
 
     const response: RecommendationResponse = { target, recommendations };
     const responsePayloadBytes = Buffer.byteLength(JSON.stringify(response), 'utf8');
@@ -141,7 +117,7 @@ export async function POST(req: Request) {
       metadata: {
         mode: json.mode,
         recommendationCount: recommendations.length,
-        candidateCount: filteredCandidates.length,
+        candidateCount: ranked.eligibleCandidateCount,
         playerCount: players.length,
         responsePayloadBytes,
       },

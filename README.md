@@ -30,6 +30,8 @@ flowchart LR
 
 ## Scouting Decision Dashboard
 
+The new `/dashboard` route combines target-specific recommendations with a defined metrics table and the latest accepted analytics run once deployed. The [short case study](docs/analytics/SCOUTING_CASE_STUDY.md) explains the scout's decision and the checks needed before relying on a shortlist. The Excel image below is a seed-data snapshot and is not a live production coverage claim.
+
 This seed snapshot presents a Mohamed Salah replacement scenario using QuickScout's existing scoring engine and an eligible RW/LW shortlist.
 
 ![QuickScout Scouting Decision Dashboard for the Mohamed Salah replacement scenario](docs/scouting/salah-replacement-dashboard.png)
@@ -112,7 +114,7 @@ export DBT_THREADS=4
 export DBT_SSLMODE=require
 ```
 
-The database user must be able to read `public.players` and `public.player_season_stats`, and create/update `analytics_staging` and `analytics_marts`.
+The database user must be able to read `public.players` and `public.player_season_stats`, write the run ledger for hosted operations, and create/update both the `analytics_candidate_*` and published `analytics_*` schemas.
 
 Run validation and build commands from the repository root:
 
@@ -222,6 +224,33 @@ Evidence was recorded on 2026-08-31 UTC against the same local PostgreSQL volume
 Sanitized logs: [attempt 1 intentional failure](docs/airflow/evidence/retry-attempt-1.log), [attempt 2 recovery](docs/airflow/evidence/retry-attempt-2.log), and [idempotent rerun](docs/airflow/evidence/idempotent-rerun.log).
 
 These are correctness results only. Airflow execution durations shown in the UI are runtime metadata, not claimed performance measurements.
+
+## Hosted analytics operations
+
+The local Airflow proof remains separate from the hosted analytics schedule. `.github/workflows/analytics-production.yml` builds and tests candidate dbt schemas at **05:17 UTC daily**, then atomically promotes them into the published `analytics_*` names only after the quality gate passes; `.github/workflows/analytics-health.yml` checks run health at **08:47 and 20:47 UTC**. The workflows are present but scheduled jobs stay gated until repository variable `ANALYTICS_SCHEDULE_ENABLED=true` is set after hosted validation. They do not call API-Football or enable the historical 2024 Vercel cron.
+
+Apply `supabase/migrations/20260929000000_analytics_pipeline_runs.sql` to the hosted database before a workflow run. The `public.analytics_pipeline_runs` ledger records every GitHub run attempt, its UTC logical date, source read time, source and mart counts, quality result, and a safe error code. Direct app clients have no table access; `GET /api/analytics/metrics` uses the server service role and returns only aggregate metrics and sanitized run status. The dashboard labels seed-only data, unavailable state, changed source data, failed or stuck runs, and missed daily builds.
+
+Configure these GitHub Actions secrets from the hosted Supabase Postgres **session pooler** connection: `DBT_HOST`, `DBT_PORT`, `DBT_USER`, `DBT_PASSWORD`, `DBT_DBNAME`. The workflow uses `DBT_SSLMODE=require`; `DBT_THREADS` is 4. Enable Issues in the repository and subscribe to them so pipeline alerts are delivered. The workflow token uses `issues: write` only in monitor jobs. GitHub scheduled workflows can be delayed or dropped, and public repository schedules can be disabled after inactivity; check the dashboard's last successful build time as well as Issues.
+
+First run **Analytics production** manually on `main` with `logical_date` empty. Confirm the workflow passed, query the ledger for one `completed` row, compare its source/mart counts with independent SQL and confirm `/api/analytics/metrics` reports `verified`. Then set `ANALYTICS_SCHEDULE_ENABLED=true`. The monitor opens or updates one Issue per problem type for a missing daily accepted run, a source update unprocessed for 24 hours, empty source, a failed run, a run stuck for two hours, or an unreadable ledger; it closes resolved Issues. A source player or season-stat count at or below 95% of the last accepted baseline fails the new snapshot. Only a manual workflow run with `accept_new_baseline=true` and a nonempty `baseline_reason` may accept an intentional decrease; dbt and all other quality checks must still pass.
+
+Use an independent read-only reconciliation after that first run:
+
+```sql
+select run_key, logical_date, status, source_read_at, completed_at,
+       source_counts, mart_counts, metrics, error_code
+from public.analytics_pipeline_runs
+order by started_at desc limit 1;
+
+select (select count(*) from public.players) as source_players,
+       (select count(*) from public.player_season_stats) as source_stats,
+       (select count(*) from analytics_marts.fact_player_season) as fact_rows,
+       (select count(*) - count(distinct player_season_id)
+          from analytics_marts.fact_player_season) as duplicate_fact_keys;
+```
+
+To fill a missed day, dispatch **Analytics production** with that past UTC `logical_date`. It creates a distinct attempt, reads **current** source tables, and records both the logical date and actual read time. It cannot reconstruct historical source state. Source updates that arrive during a build fail the consistency check and require a rerun. The existing 2024 provider schedule in `vercel.json` remains disabled.
 
 ## Local setup
 

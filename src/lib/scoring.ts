@@ -50,7 +50,7 @@ type ScoreWeights = {
   ageUpside: number;
 };
 
-const MODE_WEIGHTS: Record<RecommendationMode, ScoreWeights> = {
+export const MODE_WEIGHTS: Record<RecommendationMode, ScoreWeights> = {
   like_for_like: { similarity: 0.45, roleFit: 0.2, output: 0.15, affordability: 0.1, ageUpside: 0.1 },
   cheaper: { similarity: 0.3, roleFit: 0.15, output: 0.1, affordability: 0.35, ageUpside: 0.1 },
   young_upside: { similarity: 0.35, roleFit: 0.15, output: 0.1, affordability: 0.05, ageUpside: 0.35 },

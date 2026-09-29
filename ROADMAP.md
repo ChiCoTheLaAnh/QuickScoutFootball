@@ -154,6 +154,14 @@ Aligned with [README.md](README.md) provider integration plan.
 
 # Analytics Pipeline
 
+## Phase 2 — Hosted analytics operations
+
+- [x] Add a gated daily GitHub Actions dbt build, a per-attempt run ledger, quality checks, manual missed-day backfill, and GitHub Issue monitoring
+- [x] Add a scouting dashboard with metric definitions, accepted-build status, and a short decision case study
+- [x] Allow legitimate source changes in the local Airflow idempotency check
+- [ ] Apply the ledger migration and run one manual analytics workflow against hosted Supabase; independently reconcile counts and dashboard status
+- [ ] Set `ANALYTICS_SCHEDULE_ENABLED=true` after hosted proof and observe one scheduled build and health check
+
 ## Phase 0 — dbt Analytics Foundation
 
 - [x] Keep `public.players` and `public.player_season_stats` as unchanged application-owned sources

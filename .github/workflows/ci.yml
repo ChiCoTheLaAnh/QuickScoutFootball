@@ -107,6 +107,27 @@ jobs:
             --command "select count(*) from analytics_marts.fact_player_season where player_season_id is distinct from fact_player_season_key")"
           test "$mismatch_count" = "0"
 
+      - name: Verify analytics run ledger and two candidate promotions
+        run: |
+          run_id_base="$GITHUB_RUN_ID"
+          export GITHUB_RUN_ATTEMPT=1 GITHUB_EVENT_NAME=workflow_dispatch
+          export GITHUB_RUN_ID="${run_id_base}-fixture-first"
+          python scripts/analytics_operations.py start
+          dbt build --target candidate --project-dir analytics --profiles-dir analytics
+          python scripts/analytics_operations.py finish --dbt-outcome success
+          export GITHUB_RUN_ID="${run_id_base}-fixture-second"
+          python scripts/analytics_operations.py start
+          dbt build --target candidate --project-dir analytics --profiles-dir analytics
+          python scripts/analytics_operations.py finish --dbt-outcome success
+          accepted_count="$(psql --host "$DBT_HOST" --username "$DBT_USER" --dbname "$DBT_DBNAME" \
+            --tuples-only --no-align \
+            --command "select count(*) from public.analytics_pipeline_runs where status = 'completed'")"
+          test "$accepted_count" = "2"
+          fact_count="$(psql --host "$DBT_HOST" --username "$DBT_USER" --dbname "$DBT_DBNAME" \
+            --tuples-only --no-align \
+            --command "select count(*) from analytics_marts.fact_player_season")"
+          test "$fact_count" = "20"
+
       - name: Generate dbt docs
         run: dbt docs generate --project-dir analytics --profiles-dir analytics
 

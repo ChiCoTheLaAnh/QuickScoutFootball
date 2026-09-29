@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from airflow.sdk import dag, get_current_context, task
+from pipeline_checks import classify_idempotency
 
 
 LOGGER = logging.getLogger(__name__)
@@ -63,6 +64,7 @@ def _fetch_mart_snapshot(cursor) -> dict[str, Any] | None:
         select
           count(*)::integer as row_count,
           (count(*) - count(distinct player_season_id))::integer as duplicate_count,
+          max(updated_at) as source_updated_at,
           md5(
             coalesce(
               string_agg(
@@ -101,11 +103,12 @@ def _fetch_mart_snapshot(cursor) -> dict[str, Any] | None:
         from analytics_marts.fact_player_season
         """
     )
-    row_count, duplicate_count, checksum = cursor.fetchone()
+    row_count, duplicate_count, source_updated_at, checksum = cursor.fetchone()
     return {
         "row_count": row_count,
         "duplicate_count": duplicate_count,
         "checksum": checksum,
+        "source_updated_at": source_updated_at.isoformat() if source_updated_at else None,
     }
 
 
@@ -170,6 +173,8 @@ def quickscout_analytics():
             player_count = cursor.fetchone()[0]
             cursor.execute("select count(*) from public.player_season_stats")
             stats_count = cursor.fetchone()[0]
+            cursor.execute("select max(updated_at) from public.player_season_stats")
+            source_updated_at = cursor.fetchone()[0]
             previous_mart = _fetch_mart_snapshot(cursor)
 
         if player_count == 0 or stats_count == 0:
@@ -178,6 +183,7 @@ def quickscout_analytics():
         result = {
             "source_players": player_count,
             "source_stats": stats_count,
+            "source_updated_at": source_updated_at.isoformat() if source_updated_at else None,
             "previous_mart": previous_mart,
         }
         _log_event("source.validation.completed", **result)
@@ -230,16 +236,12 @@ def quickscout_analytics():
         if current_mart["duplicate_count"] != 0:
             raise RuntimeError("Duplicate player_season_id values detected")
 
-        previous_mart = payload["previous_mart"]
-        if previous_mart is None:
-            idempotency_status = "baseline_created"
-        elif (
-            current_mart["row_count"] == previous_mart["row_count"]
-            and current_mart["checksum"] == previous_mart["checksum"]
-        ):
-            idempotency_status = "verified"
-        else:
-            raise RuntimeError("Mart row count or checksum changed across the rerun")
+        idempotency_status = classify_idempotency(
+            payload["previous_mart"],
+            current_mart,
+            payload["source_stats"],
+            payload["source_updated_at"],
+        )
 
         verification = {
             **current_mart,

@@ -1,0 +1,88 @@
+name: Analytics production
+
+on:
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+    inputs:
+      logical_date:
+        description: UTC date to fill (YYYY-MM-DD); blank means today. Reads current source state.
+        required: false
+        type: string
+      accept_new_baseline:
+        description: Accept an intentional source row-count decrease after all other checks pass
+        required: false
+        default: false
+        type: boolean
+      baseline_reason:
+        description: Required when accepting a lower row-count baseline
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quickscout-analytics-production
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: ${{ github.ref == 'refs/heads/main' && (github.event_name != 'schedule' || vars.ANALYTICS_SCHEDULE_ENABLED == 'true') }}
+    runs-on: ubuntu-latest
+    env:
+      DBT_HOST: ${{ secrets.DBT_HOST }}
+      DBT_PORT: ${{ secrets.DBT_PORT }}
+      DBT_USER: ${{ secrets.DBT_USER }}
+      DBT_PASSWORD: ${{ secrets.DBT_PASSWORD }}
+      DBT_DBNAME: ${{ secrets.DBT_DBNAME }}
+      DBT_THREADS: '4'
+      DBT_SSLMODE: require
+      PIPELINE_LOGICAL_DATE: ${{ inputs.logical_date }}
+      PIPELINE_ACCEPT_NEW_BASELINE: ${{ inputs.accept_new_baseline && 'true' || 'false' }}
+      PIPELINE_BASELINE_REASON: ${{ inputs.baseline_reason }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: analytics/requirements.txt
+      - name: Install analytics dependencies
+        run: python -m pip install -r analytics/requirements.txt
+      - name: Record started run
+        id: start
+        run: python scripts/analytics_operations.py start
+      - name: Build and test marts
+        id: dbt
+        run: dbt build --target candidate --project-dir analytics --profiles-dir analytics
+      - name: Finalize run and quality gate
+        if: ${{ always() && steps.start.outcome == 'success' }}
+        env:
+          DBT_OUTCOME: ${{ steps.dbt.outcome }}
+        run: python scripts/analytics_operations.py finish --dbt-outcome "$DBT_OUTCOME"
+
+  alert:
+    needs: build
+    if: ${{ always() && needs.build.result != 'skipped' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    env:
+      DBT_HOST: ${{ secrets.DBT_HOST }}
+      DBT_PORT: ${{ secrets.DBT_PORT }}
+      DBT_USER: ${{ secrets.DBT_USER }}
+      DBT_PASSWORD: ${{ secrets.DBT_PASSWORD }}
+      DBT_DBNAME: ${{ secrets.DBT_DBNAME }}
+      DBT_SSLMODE: require
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: analytics/requirements.txt
+      - run: python -m pip install -r analytics/requirements.txt
+      - run: python scripts/analytics_operations.py watchdog

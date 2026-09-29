@@ -10,7 +10,8 @@ export type ApiErrorCode =
   | 'CRON_NOT_CONFIGURED'
   | 'CRON_HEALTH_UNAVAILABLE'
   | 'CRON_REFRESH_CLAIM_FAILED'
-  | 'CRON_REFRESH_FAILED';
+  | 'CRON_REFRESH_FAILED'
+  | 'DASHBOARD_RECOMMEND_FAILED';
 
 export type ApiErrorResponse = {
   error: string;

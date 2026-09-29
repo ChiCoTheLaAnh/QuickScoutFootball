@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-**Final Big Five season 2024 production-proof rollout in progress; Product Phase 5 Scouting BI P1 and Analytics Phase 1 local orchestration proof are complete**
+**Final Big Five season 2024 production-proof rollout in progress; Analytics Phase 2 operations implementation awaits hosted validation**
 
 Data pipeline context (see [README.md](README.md)): the identity-safe, quota-gated Big Five implementation is deployed cron-off. The additive global-lock migration has been applied and verified on hosted Supabase; staged backfill evidence is still pending.
 
@@ -89,6 +89,7 @@ Avoid:
 
 - Run two local staged passes across daily quota windows, followed by two dbt builds and production acceptance
 - Capture one scheduled cron/duplicate/health proof, then remove the schedule and temporary performance secret
+- Apply the analytics run-ledger migration, validate one manual hosted dbt workflow, then enable and observe the gated daily schedule
 
 ## Not Started (This Phase Or Later)
 
@@ -105,6 +106,7 @@ Avoid:
 - Two earlier Pass 1 Day 1 attempts failed closed when API-Football omitted later-page quota headers; they made no hosted player/fact writes
 - The 2026-08-10 retry passed its page-1 probe but API-Football rejected page 4 because Free plans permit a maximum Page value of 3. The run finalized as failed, released the global lock, and made zero player/fact writes
 - League-level Free staged rollout is now externally blocked regardless of quota-window reset. Do not retry or redesign requests (for example, team-scoped partitioning) without explicit approval
+- The connected hosted Supabase project reported `INACTIVE` on 2026-09-29; hosted analytics validation is pending restoration and working GitHub Actions Postgres secrets
 
 ---
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 
 import type { ApiErrorResponse } from '@/src/lib/apiErrors';
 import type { Player, Recommendation, RecommendationMode, RecommendationRequest, RecommendationResponse } from '@/src/lib/types';
@@ -501,6 +502,7 @@ export default function HomePage() {
       <div ref={formCardRef} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h1 className="text-3xl font-bold tracking-tight">QuickScout Football Recommender</h1>
         <p className="mt-2 text-sm text-slate-600">Find replacement candidates with explainable scoring.</p>
+        <Link href="/dashboard" className="mt-3 inline-flex rounded-lg border border-indigo-200 px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50">Open scouting dashboard</Link>
 
         <form onSubmit={handleSubmit} className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <label className="relative flex flex-col gap-1 text-sm font-medium" ref={searchContainerRef}>
