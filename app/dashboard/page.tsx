@@ -37,20 +37,20 @@ type PipelineMetrics = {
 };
 
 const statusText: Record<PipelineMetrics['status'], string> = {
-  verified: 'Đã kiểm chứng',
-  unverified: 'Nguồn mới hơn bản kiểm chứng',
-  late: 'Lượt chạy hằng ngày bị trễ',
-  attention: 'Lượt chạy mới nhất cần kiểm tra',
-  unavailable: 'Chưa có bản kiểm chứng',
-  seed: 'Dữ liệu mẫu, chưa kiểm chứng bởi pipeline',
+  verified: 'Verified',
+  unverified: 'Source newer than verified snapshot',
+  late: 'Daily build overdue',
+  attention: 'Latest run needs attention',
+  unavailable: 'No verified snapshot available',
+  seed: 'Seed data; pipeline verification unavailable',
 };
 
 function number(value: number | null | undefined, digits = 0): string {
-  return typeof value === 'number' ? value.toLocaleString('vi-VN', { maximumFractionDigits: digits }) : 'Chưa có';
+  return typeof value === 'number' ? value.toLocaleString('en-US', { maximumFractionDigits: digits }) : 'Unavailable';
 }
 
 function time(value: string | null | undefined): string {
-  return value ? new Date(value).toLocaleString('vi-VN', { timeZone: 'UTC' }) + ' UTC' : 'Chưa có';
+  return value ? new Date(value).toLocaleString('en-US', { timeZone: 'UTC' }) + ' UTC' : 'Unavailable';
 }
 
 export default function DashboardPage() {
@@ -90,7 +90,7 @@ export default function DashboardPage() {
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selected) { setError('Hãy chọn đúng cầu thủ từ danh sách tìm kiếm.'); return; }
+    if (!selected) { setError('Select a player from the search results.'); return; }
     setLoading(true);
     setError(null);
     setResult(null);
@@ -107,7 +107,7 @@ export default function DashboardPage() {
           minMinutes: minMinutes === '' ? null : Number(minMinutes),
         }),
       });
-      if (!response.ok) throw new Error('Không tải được danh sách ứng viên. Hãy thử lại.');
+      if (!response.ok) throw new Error('Could not load the shortlist. Please try again.');
       const payload = await response.json() as DashboardRecommendation;
       try {
         const statusResponse = await fetch('/api/analytics/metrics', { cache: 'no-store' });
@@ -117,7 +117,7 @@ export default function DashboardPage() {
       }
       setResult(payload);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Không tải được dữ liệu.');
+      setError(cause instanceof Error ? cause.message : 'Could not load the data.');
     } finally {
       setLoading(false);
     }
@@ -127,64 +127,64 @@ export default function DashboardPage() {
   const snapshot = pipeline?.latestAccepted;
   const weights = MODE_WEIGHTS[mode];
   const metrics = [
-    { name: 'Fit score dẫn đầu', value: leader ? number(leader.score, 1) : 'Chưa chọn', unit: '/100', definition: `Tổng = similarity × ${weights.similarity} + role fit × ${weights.roleFit} + output × ${weights.output} + affordability × ${weights.affordability} + age upside × ${weights.ageUpside}.`, scope: 'Ứng viên xếp #1 trong bộ lọc hiện tại', missing: 'Không có ứng viên: chưa có điểm' },
-    { name: 'Similarity', value: leader ? number(leader.breakdown.similarity, 1) : 'Chưa chọn', unit: '/100', definition: 'Độ tương đồng vector chỉ số với cầu thủ mục tiêu; chỉ dùng chỉ số nâng cao khi cả hai có dữ liệu.', scope: 'Ứng viên #1', missing: 'xG/xA thiếu được loại khỏi vector chung' },
-    { name: 'Role fit / output', value: leader ? `${number(leader.breakdown.roleFit, 1)} / ${number(leader.breakdown.output, 1)}` : 'Chưa chọn', unit: '/100', definition: 'Hai thành phần dùng mức đầu ra đã chuẩn hóa theo vai trò trong bộ chấm điểm hiện tại.', scope: 'Ứng viên #1', missing: 'Chỉ số nâng cao thiếu không được tự tạo' },
-    { name: 'Affordability / age upside', value: leader ? `${number(leader.breakdown.affordability, 1)} / ${number(leader.breakdown.ageUpside, 1)}` : 'Chưa chọn', unit: '/100', definition: 'Điểm khả năng chi trả theo ngân sách đã nhập và điểm tiềm năng theo nhóm tuổi.', scope: 'Ứng viên #1', missing: 'Giá trị chuyển nhượng thiếu dùng quy tắc trung tính của scoring engine' },
-    { name: 'Ứng viên hợp lệ', value: result ? number(result.eligibleCandidateCount) : 'Chưa chọn', unit: 'cầu thủ', definition: 'Số cầu thủ còn lại sau loại mục tiêu và áp dụng tuổi, giá trị, phút thi đấu, chế độ tìm kiếm; trước giới hạn top 10.', scope: 'Bộ lọc hiện tại', missing: '0 nếu không có ứng viên' },
-    { name: 'Độ phủ giá trị chuyển nhượng', value: result ? number(result.marketValueCoveragePct, 1) : 'Chưa chọn', unit: '%', definition: 'Ứng viên hợp lệ có market value / tổng ứng viên hợp lệ × 100.', scope: 'Bộ lọc hiện tại', missing: 'Chưa có nếu mẫu số bằng 0' },
-    { name: 'Fact có chỉ số thi đấu dương', value: number(snapshot?.metrics?.positive_fact_pct, 1), unit: '%', definition: 'Fact đã kiểm chứng có appearances > 0 và minutes > 0 / tổng fact × 100.', scope: 'Toàn bộ mart tại lần build được chấp nhận', missing: 'Chưa có nếu chưa build hoặc mẫu số bằng 0' },
-    { name: 'Fact được kiểm chứng', value: number(snapshot?.martCounts?.facts), unit: 'dòng', definition: 'Số dòng fact_player_season; phải bằng số season-stat nguồn và không có player_season_id trùng.', scope: 'Toàn bộ mart tại lần build được chấp nhận', missing: 'Chưa có nếu chưa có build đạt' },
-    { name: 'Trạng thái kiểm chứng', value: pipeline ? statusText[pipeline.status] : 'Đang kiểm tra', unit: 'trạng thái', definition: 'Đã kiểm chứng khi nguồn chưa đổi, lần build gần nhất đạt và ngày logic hiện tại có lượt thành công trước hạn 08:47 UTC.', scope: 'Toàn bộ dữ liệu tại thời điểm kiểm tra', missing: 'Không đọc được ledger: chưa có bản kiểm chứng' },
-    { name: 'Thời điểm build đạt', value: time(snapshot?.completedAt), unit: 'UTC', definition: 'Thời điểm hoàn tất lượt dbt và kiểm tra chất lượng mới nhất được chấp nhận.', scope: 'Toàn bộ mart', missing: 'Chưa có nếu chưa từng có lượt đạt' },
+    { name: 'Top fit score', value: leader ? number(leader.score, 1) : 'No selection', unit: '/100', definition: `Total = similarity × ${weights.similarity} + role fit × ${weights.roleFit} + output × ${weights.output} + affordability × ${weights.affordability} + age upside × ${weights.ageUpside}.`, scope: 'Top-ranked candidate under the current filters', missing: 'No candidate: no score' },
+    { name: 'Similarity', value: leader ? number(leader.breakdown.similarity, 1) : 'No selection', unit: '/100', definition: 'Similarity of the candidate and target stat vectors; advanced stats are used only when both players have them.', scope: 'Top-ranked candidate', missing: 'Missing xG/xA are excluded from the shared vector' },
+    { name: 'Role fit / output', value: leader ? `${number(leader.breakdown.roleFit, 1)} / ${number(leader.breakdown.output, 1)}` : 'No selection', unit: '/100', definition: 'Both components currently use output normalized for the selected role.', scope: 'Top-ranked candidate', missing: 'Missing advanced stats are not imputed' },
+    { name: 'Affordability / age upside', value: leader ? `${number(leader.breakdown.affordability, 1)} / ${number(leader.breakdown.ageUpside, 1)}` : 'No selection', unit: '/100', definition: 'Budget-based affordability score and age-band upside score.', scope: 'Top-ranked candidate', missing: 'Missing market value uses the scoring engine’s neutral rule' },
+    { name: 'Eligible candidates', value: result ? number(result.eligibleCandidateCount) : 'No selection', unit: 'players', definition: 'Players left after excluding the target and applying age, market value, minutes, and search-mode filters; before the top-10 limit.', scope: 'Current filters', missing: '0 when no player is eligible' },
+    { name: 'Market value coverage', value: result ? number(result.marketValueCoveragePct, 1) : 'No selection', unit: '%', definition: 'Eligible candidates with a market value / all eligible candidates × 100.', scope: 'Current filters', missing: 'Unavailable when there are no eligible candidates' },
+    { name: 'Facts with positive appearances and minutes', value: number(snapshot?.metrics?.positive_fact_pct, 1), unit: '%', definition: 'Verified facts with appearances > 0 and minutes > 0 / all facts × 100.', scope: 'Entire mart in the latest accepted build', missing: 'Unavailable without an accepted build or when the denominator is 0' },
+    { name: 'Verified facts', value: number(snapshot?.martCounts?.facts), unit: 'rows', definition: 'Rows in fact_player_season; must match source season-stat rows with no duplicate player_season_id.', scope: 'Entire mart in the latest accepted build', missing: 'Unavailable without an accepted build' },
+    { name: 'Verification status', value: pipeline ? statusText[pipeline.status] : 'Checking', unit: 'status', definition: 'Verified when the source is unchanged, the latest run passed, and today has an accepted build by the 08:47 UTC deadline.', scope: 'All data at the time of the status check', missing: 'Unreadable ledger: no verified status' },
+    { name: 'Latest accepted build', value: time(snapshot?.completedAt), unit: 'UTC', definition: 'Completion time of the latest dbt build accepted by the quality gate.', scope: 'Entire mart', missing: 'Unavailable if no build has passed' },
   ];
 
   return (
     <main className="mx-auto max-w-7xl px-5 py-8 text-slate-900">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold">QuickScout · Dashboard tuyển trạch</h1>
-          <p className="mt-1 text-sm text-slate-600">Chọn mục tiêu, xem shortlist và kiểm tra độ tin cậy của dữ liệu.</p>
+          <h1 className="text-3xl font-bold">QuickScout · Scouting Dashboard</h1>
+          <p className="mt-1 text-sm text-slate-600">Choose a target, review the shortlist, and check data reliability.</p>
         </div>
-        <Link href="/" className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold">Mở ứng dụng chính</Link>
+        <Link href="/" className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold">Back to QuickScout</Link>
       </div>
 
-      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-label="Trạng thái dữ liệu">
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" aria-label="Data status">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold">Trạng thái dữ liệu</h2>
+          <h2 className="text-xl font-semibold">Data status</h2>
           <strong className={`rounded-full px-3 py-1 text-sm ${pipeline?.status === 'verified' ? 'bg-emerald-100 text-emerald-900' : 'bg-amber-100 text-amber-900'}`}>
-            {pipeline ? statusText[pipeline.status] : 'Đang kiểm tra…'}
+            {pipeline ? statusText[pipeline.status] : 'Checking…'}
           </strong>
         </div>
-        <p className="mt-3 text-sm text-slate-700">Bản build được chấp nhận: {time(snapshot?.completedAt)} · Nguồn đọc: {time(snapshot?.sourceReadAt)} · Ngày logic: {snapshot?.logicalDate ?? 'Chưa có'}</p>
-        <p className="mt-1 text-sm text-slate-700">Lượt chạy gần nhất: {pipeline?.latestRun?.status ?? 'Chưa có'}{pipeline?.latestRun?.errorCode ? ` (${pipeline.latestRun.errorCode})` : ''} · Kiểm tra trạng thái: {time(pipeline?.checkedAt)}</p>
-        <p className="mt-2 text-sm text-amber-900">Dữ liệu API-Football mùa 2024 hiện chưa chứng minh độ phủ đầy đủ Big Five. Hãy xem độ phủ và dấu thời gian trước khi dùng shortlist để ra quyết định.</p>
+        <p className="mt-3 text-sm text-slate-700">Latest accepted build: {time(snapshot?.completedAt)} · Source read: {time(snapshot?.sourceReadAt)} · Logical date: {snapshot?.logicalDate ?? 'Unavailable'}</p>
+        <p className="mt-1 text-sm text-slate-700">Latest run: {pipeline?.latestRun?.status ?? 'Unavailable'}{pipeline?.latestRun?.errorCode ? ` (${pipeline.latestRun.errorCode})` : ''} · Status checked: {time(pipeline?.checkedAt)}</p>
+        <p className="mt-2 text-sm text-amber-900">API-Football season 2024 data has not been shown to cover the full Big Five. Review coverage and timestamps before using a shortlist to make a decision.</p>
       </section>
 
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-xl font-semibold">Tạo shortlist</h2>
+        <h2 className="text-xl font-semibold">Build a shortlist</h2>
         <form onSubmit={submit} className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <label className="relative flex flex-col gap-1 text-sm font-medium">Cầu thủ mục tiêu
-            <input value={query} onChange={(event) => { setQuery(event.target.value); setSelected(null); setSuggestions([]); setResult(null); }} autoComplete="off" placeholder="Ví dụ: Mohamed Salah" className="rounded-lg border border-slate-300 px-3 py-2" />
+          <label className="relative flex flex-col gap-1 text-sm font-medium">Target player
+            <input value={query} onChange={(event) => { setQuery(event.target.value); setSelected(null); setSuggestions([]); setResult(null); }} autoComplete="off" placeholder="e.g. Mohamed Salah" className="rounded-lg border border-slate-300 px-3 py-2" />
             {suggestions.length > 0 && <ul className="absolute top-full z-10 max-h-48 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
               {suggestions.map((player) => <li key={player.id}><button type="button" className="w-full px-3 py-2 text-left hover:bg-indigo-50" onClick={() => { setSelected(player); setQuery(player.fullName); setRole(player.position ?? 'RW'); setSuggestions([]); }}>{player.fullName} · {player.team ?? player.providerSource}</button></li>)}
             </ul>}
           </label>
-          <label className="flex flex-col gap-1 text-sm font-medium">Vai trò<input value={role} onChange={(event) => { setRole(event.target.value); setResult(null); }} className="rounded-lg border border-slate-300 px-3 py-2" /></label>
-          <label className="flex flex-col gap-1 text-sm font-medium">Chế độ<select value={mode} onChange={(event) => { setMode(event.target.value as RecommendationMode); setResult(null); }} className="rounded-lg border border-slate-300 px-3 py-2"><option value="like_for_like">Tương đồng</option><option value="cheaper">Chi phí thấp hơn</option><option value="young_upside">Tiềm năng trẻ</option></select></label>
-          <label className="flex flex-col gap-1 text-sm font-medium">Tuổi tối đa<input type="number" min="15" value={maxAge} onChange={(event) => { setMaxAge(event.target.value); setResult(null); }} className="rounded-lg border border-slate-300 px-3 py-2" /></label>
-          <label className="flex flex-col gap-1 text-sm font-medium">Giá trị tối đa (EUR)<input type="number" min="0" value={maxMarketValue} onChange={(event) => { setMaxMarketValue(event.target.value); setResult(null); }} className="rounded-lg border border-slate-300 px-3 py-2" /></label>
-          <label className="flex flex-col gap-1 text-sm font-medium">Số phút tối thiểu<input type="number" min="0" value={minMinutes} onChange={(event) => { setMinMinutes(event.target.value); setResult(null); }} className="rounded-lg border border-slate-300 px-3 py-2" /></label>
-          <button type="submit" disabled={loading} className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-50 sm:col-span-2 lg:col-span-3">{loading ? 'Đang tính…' : 'Xem ứng viên'}</button>
+          <label className="flex flex-col gap-1 text-sm font-medium">Role<input value={role} onChange={(event) => { setRole(event.target.value); setResult(null); }} className="rounded-lg border border-slate-300 px-3 py-2" /></label>
+          <label className="flex flex-col gap-1 text-sm font-medium">Search mode<select value={mode} onChange={(event) => { setMode(event.target.value as RecommendationMode); setResult(null); }} className="rounded-lg border border-slate-300 px-3 py-2"><option value="like_for_like">Like for like</option><option value="cheaper">Lower cost</option><option value="young_upside">Young upside</option></select></label>
+          <label className="flex flex-col gap-1 text-sm font-medium">Maximum age<input type="number" min="15" value={maxAge} onChange={(event) => { setMaxAge(event.target.value); setResult(null); }} className="rounded-lg border border-slate-300 px-3 py-2" /></label>
+          <label className="flex flex-col gap-1 text-sm font-medium">Maximum market value (EUR)<input type="number" min="0" value={maxMarketValue} onChange={(event) => { setMaxMarketValue(event.target.value); setResult(null); }} className="rounded-lg border border-slate-300 px-3 py-2" /></label>
+          <label className="flex flex-col gap-1 text-sm font-medium">Minimum minutes<input type="number" min="0" value={minMinutes} onChange={(event) => { setMinMinutes(event.target.value); setResult(null); }} className="rounded-lg border border-slate-300 px-3 py-2" /></label>
+          <button type="submit" disabled={loading} className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-50 sm:col-span-2 lg:col-span-3">{loading ? 'Calculating…' : 'View candidates'}</button>
         </form>
         {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
-        {result && <div className="mt-5 overflow-x-auto"><h3 className="font-semibold">Top {result.recommendations.length} cho {result.target.fullName}</h3>{pipeline?.status !== 'verified' && <p role="status" className="mt-2 rounded-lg bg-amber-100 px-3 py-2 text-sm font-medium text-amber-950">Shortlist này chưa có trạng thái kiểm chứng đạt tại thời điểm hiển thị. Chỉ dùng để khảo sát, chưa dùng làm quyết định tuyển dụng cuối cùng.</p>}<table className="mt-2 w-full min-w-[550px] text-left text-sm"><thead className="border-b bg-slate-50"><tr><th className="p-2">#</th><th className="p-2">Cầu thủ</th><th className="p-2">CLB</th><th className="p-2">Fit score</th><th className="p-2">Lý do</th></tr></thead><tbody>{result.recommendations.map((item, index) => <tr key={item.player.id} className="border-b"><td className="p-2">{index + 1}</td><td className="p-2 font-medium">{item.player.fullName}</td><td className="p-2">{item.player.team ?? 'Chưa có'}</td><td className="p-2">{number(item.score, 1)}</td><td className="p-2 text-slate-600">{item.reasons.slice(1, 3).join(' ')}</td></tr>)}</tbody></table>{result.recommendations.length === 0 && <p className="mt-2 text-sm">Không có ứng viên phù hợp bộ lọc.</p>}</div>}
+        {result && <div className="mt-5 overflow-x-auto"><h3 className="font-semibold">Top {result.recommendations.length} for {result.target.fullName}</h3>{pipeline?.status !== 'verified' && <p role="status" className="mt-2 rounded-lg bg-amber-100 px-3 py-2 text-sm font-medium text-amber-950">This shortlist does not currently have a verified status. Use it for exploration, not as a final recruitment decision.</p>}<table className="mt-2 w-full min-w-[550px] text-left text-sm"><thead className="border-b bg-slate-50"><tr><th className="p-2">#</th><th className="p-2">Player</th><th className="p-2">Club</th><th className="p-2">Fit score</th><th className="p-2">Reason</th></tr></thead><tbody>{result.recommendations.map((item, index) => <tr key={item.player.id} className="border-b"><td className="p-2">{index + 1}</td><td className="p-2 font-medium">{item.player.fullName}</td><td className="p-2">{item.player.team ?? 'Unavailable'}</td><td className="p-2">{number(item.score, 1)}</td><td className="p-2 text-slate-600">{item.reasons.slice(1, 3).join(' ')}</td></tr>)}</tbody></table>{result.recommendations.length === 0 && <p className="mt-2 text-sm">No candidates match these filters.</p>}</div>}
       </section>
 
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-xl font-semibold">Bảng metrics và định nghĩa</h2>
-        <p className="mt-1 text-sm text-slate-600">Các chỉ số tuyển trạch tính từ bộ lọc hiện tại; các chỉ số fact lấy từ lần build đã được chấp nhận.</p>
-        <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[850px] text-left text-sm"><thead className="border-b bg-slate-50"><tr><th className="p-2">Metric</th><th className="p-2">Giá trị</th><th className="p-2">Đơn vị</th><th className="p-2">Định nghĩa</th><th className="p-2">Phạm vi</th><th className="p-2">Thiếu dữ liệu</th></tr></thead><tbody>{metrics.map((metric) => <tr key={metric.name} className="border-b align-top"><th className="p-2 font-semibold">{metric.name}</th><td className="p-2">{metric.value}</td><td className="p-2">{metric.unit}</td><td className="p-2">{metric.definition}</td><td className="p-2">{metric.scope}</td><td className="p-2">{metric.missing}</td></tr>)}</tbody></table></div>
+        <h2 className="text-xl font-semibold">Metrics and definitions</h2>
+        <p className="mt-1 text-sm text-slate-600">Scouting metrics reflect the current filters; fact metrics come from the latest accepted build.</p>
+        <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[850px] text-left text-sm"><thead className="border-b bg-slate-50"><tr><th className="p-2">Metric</th><th className="p-2">Value</th><th className="p-2">Unit</th><th className="p-2">Definition</th><th className="p-2">Scope</th><th className="p-2">Missing data</th></tr></thead><tbody>{metrics.map((metric) => <tr key={metric.name} className="border-b align-top"><th className="p-2 font-semibold">{metric.name}</th><td className="p-2">{metric.value}</td><td className="p-2">{metric.unit}</td><td className="p-2">{metric.definition}</td><td className="p-2">{metric.scope}</td><td className="p-2">{metric.missing}</td></tr>)}</tbody></table></div>
       </section>
     </main>
   );
