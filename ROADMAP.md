@@ -194,3 +194,5 @@ Aligned with [README.md](README.md) provider integration plan.
 - Team-level squad planning view
 - Confidence tuning per league or position
 - Analytics dashboard for recommendation run history
+
+- [Scouting Validation V1 feasibility decision](docs/analytics/SCOUTING_VALIDATION_V1.md) — real-data availability for the Salah recruitment evaluation.
