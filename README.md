@@ -28,6 +28,12 @@ flowchart LR
 - Recommendation history and replay, shortlist comparison, and CSV export.
 - A tested dbt dimensional model for analytics and downstream reporting.
 
+## Recruitment decision brief
+
+Open `/dashboard/recruitment` to inspect the 2024/25 Salah recruitment brief, switch between three supplied rankings, review scouting notes and compare two candidates. The default Cloud experience uses fictional profiles. The attributed Local case note and the earlier seed workbook are separate evidence sources. [Ranking evidence](docs/analytics/SCORING_V2.md)
+
+To supply a reviewed, shareable artifact, set the server-only `QUICKSCOUT_RECRUITMENT_ARTIFACT` to a trusted local JSON file outside the public directory. Set schemaVersion to 1, mode to retrospective, and sharingApproved to true only after checking source provenance, redistribution rights and every display field. Include the release, scoring version, fixed case, stable candidate IDs, EUR estimates and ISO valuation dates, league minutes, per-90 rates, RW evidence, limitations and questions. Supply distinct positive ranks per method, component scores on a 0–100 scale and null for missing metrics or ranks. All free text in the defined fields is intended for display. An invalid artifact opens an unavailable state with a link to the demo. Keep private exports out of Git. [Typed contract](src/lib/recruitment/contract.ts) · [Fictional example](src/lib/recruitment/fixture.ts)
+
 ## Scouting Decision Dashboard
 
 The new `/dashboard` route combines target-specific recommendations with a defined metrics table and the latest accepted analytics run once deployed. The [short case study](docs/analytics/SCOUTING_CASE_STUDY.md) explains the scout's decision and the checks needed before relying on a shortlist. The Excel image below is a seed-data snapshot and is not a live production coverage claim.

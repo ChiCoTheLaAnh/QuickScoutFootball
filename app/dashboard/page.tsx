@@ -146,6 +146,7 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold">QuickScout · Scouting Dashboard</h1>
           <p className="mt-1 text-sm text-slate-600">Choose a target, review the shortlist, and check data reliability.</p>
         </div>
+        <Link href="/dashboard/recruitment" className="rounded-lg bg-emerald-800 px-4 py-2 text-sm font-semibold text-white">Recruitment decision brief</Link>
         <Link href="/" className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold">Back to QuickScout</Link>
       </div>
 

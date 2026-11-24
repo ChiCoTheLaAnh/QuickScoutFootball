@@ -1,6 +1,6 @@
 # Scoring V2 · Cloud handoff
 
-The 2024/25 Salah case is awaiting a verified player-level run. Human evaluation is postponed. Cloud can develop and test against synthetic fixtures now. The real-data benchmark requires a privately staged release and a usable Salah profile.
+The project owner supplied a retrospective Local run summary for the 2024/25 Salah case. Cloud has not independently reproduced it. Human evaluation is postponed. Cloud can develop and test against synthetic fixtures now. The real-data benchmark requires a privately staged release and a usable Salah profile.
 
 ## Three methods to compare
 
@@ -16,7 +16,7 @@ Use the same Big Five domestic-league pool for all three methods. At June 30, 20
 
 ## Observed results and sensitivity
 
-The inventory fixture exercises cutoff dates, boundary eligibility, repeated appearance rows, conflicting valuations and reproducible CSV output. The Cloud checkout contains no raw Transfermarkt CSVs or verified V2 rankings. The real candidate count, ranking agreement and shortlist quality remain unknown. The existing dashboard case study uses different age and minutes constraints. [Inventory fixture](../../scripts/test_transfermarkt_inventory.py) · [Feasibility evidence](SCOUTING_VALIDATION_V1.md) · [Dashboard case study](SCOUTING_CASE_STUDY.md)
+The inventory fixture exercises cutoff dates, boundary eligibility, repeated appearance rows, conflicting valuations and reproducible CSV output. The Cloud checkout contains no raw Transfermarkt CSVs or verified V2 rankings. The project owner reported **108 eligible candidates** under the stated constraints. **Yankuba Minteh** ranked first under QuickScout V2. **Mason Greenwood** ranked first under both baselines. Repeated Local runs produced identical rankings. The benchmark implementation, player-level exports, weights used in that run and sensitivity measurements are unavailable in this checkout. Shortlist relevance and ranking agreement beyond the reported winners remain unknown. The existing dashboard case study uses different age and minutes constraints. [Inventory fixture](../../scripts/test_transfermarkt_inventory.py) · [Feasibility evidence](SCOUTING_VALIDATION_V1.md) · [Dashboard case study](SCOUTING_CASE_STUDY.md)
 
 No measured sensitivity results are available. Once the pool is verified, vary one weight at a time by ±20%, renormalize the weights, and rerun after removing overlapping or optional features. Report both top-five membership changes and order changes. If exactly five candidates qualify, membership is invariant by construction. Historical missing appearances may depress minute totals, while retrospective profile labels may have changed since the cutoff. [Publisher’s appearance recovery report](https://github.com/dcaribou/transfermarkt-datasets/issues/349)
 

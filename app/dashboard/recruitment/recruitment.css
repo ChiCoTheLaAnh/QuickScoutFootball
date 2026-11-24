@@ -1,0 +1,256 @@
+.recruit {
+  max-width: 1160px;
+  margin: auto;
+  padding: 0 clamp(16px, 4vw, 48px) 64px;
+  color: #18372e;
+}
+.recruit h1,
+.recruit h2,
+.recruit h3,
+.recruit dd,
+.recruit p {
+  margin: 0;
+}
+.rc-nav {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  padding: 14px 0;
+  font-size: 0.88rem;
+}
+.rc-nav a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.rc-nav span {
+  background: #e3edbf;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-weight: 700;
+}
+.rc-brief {
+  border-radius: 12px;
+  background: #123e33;
+  color: white;
+  padding: clamp(20px, 4vw, 42px);
+}
+.rc-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.rc-heading p {
+  color: #d6e6df;
+}
+.rc-heading h1 {
+  font-size: clamp(2.3rem, 5vw, 4rem);
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+  margin: 10px 0;
+}
+.rc-pitch {
+  position: relative;
+  flex: 0 0 136px;
+  height: 85px;
+  border: 1px solid #82a99a;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 17px,
+    #ffffff08 17px 34px
+  );
+  overflow: hidden;
+}
+.rc-pitch:before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  height: 100%;
+  border-left: 1px solid #82a99a;
+}
+.rc-pitch:after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  top: 25%;
+  width: 18%;
+  height: 50%;
+  border: 1px solid #82a99a;
+}
+.rc-pitch span {
+  position: absolute;
+  right: 10%;
+  bottom: 5%;
+  font-size: 10px;
+  padding: 1px 4px;
+  background: #dfefa3;
+  color: #18372e;
+  font-weight: bold;
+}
+.rc-constraints,
+.rc-meta {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin: 24px 0 0;
+}
+.rc-constraints {
+  border-top: 1px solid #577a6b;
+  padding-top: 18px;
+}
+.recruit dt,
+.recruit small {
+  font-size: 0.8rem;
+  display: block;
+}
+.rc-constraints dd {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+.rc-section {
+  margin-top: 28px;
+  padding: clamp(16px, 3vw, 28px);
+  background: white;
+  border: 1px solid #dae3df;
+  border-radius: 10px;
+}
+.rc-section h2 {
+  font-size: 1.55rem;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+}
+.rc-section p {
+  margin: 10px 0;
+  color: #466055;
+  font-size: 0.94rem;
+}
+.rc-methods {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.rc-methods button {
+  border: 1px solid #cbd8d1;
+  padding: 6px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+.rc-methods button[aria-pressed='true'] {
+  background: #1b5143;
+  color: white;
+}
+.rc-list {
+  padding: 0;
+  list-style: none;
+}
+.rc-list li article {
+  border-top: 1px solid #dbe4df;
+  padding: 16px 0;
+}
+.rc-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1.4fr 0.8fr;
+  gap: 12px;
+  align-items: center;
+}
+.rc-row h3 {
+  font-weight: 700;
+  display: inline;
+}
+.rc-rank {
+  color: #487053;
+  font-size: 0.8rem;
+  margin-right: 8px;
+}
+.rc-row p,
+.rc-row small {
+  margin: 2px 0;
+  color: #50665a;
+}
+.rc-row b {
+  font-variant-numeric: tabular-nums;
+}
+.rc-row label {
+  font-size: 0.9rem;
+}
+.rc-row input {
+  accent-color: #185640;
+}
+.rc-evidence {
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+.rc-evidence summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.rc-notes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  padding: 14px;
+  background: #f2f6f2;
+  margin-top: 8px;
+}
+.rc-notes h4 {
+  font-weight: 700;
+}
+.rc-scroll {
+  overflow-x: auto;
+}
+.recruit table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 14px 0;
+  font-size: 0.9rem;
+  text-align: left;
+}
+.recruit td,
+.recruit th {
+  padding: 8px;
+  border-bottom: 1px solid #dce4df;
+}
+.recruit thead {
+  background: #edf3ef;
+}
+.rc-meta {
+  grid-template-columns: repeat(3, 1fr);
+}
+.rc-meta dd {
+  font-weight: 600;
+}
+.recruit :focus-visible {
+  outline: 3px solid #467a60;
+  outline-offset: 3px;
+}
+@media (max-width: 680px) {
+  .rc-pitch {
+    display: none;
+  }
+  .rc-row,
+  .rc-meta,
+  .rc-constraints {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rc-notes {
+    grid-template-columns: 1fr;
+  }
+  .rc-row h3 {
+    display: block;
+  }
+  .rc-scroll th,
+  .rc-scroll td {
+    min-width: 85px;
+  }
+  .rc-section {
+    margin-top: 16px;
+  }
+}
