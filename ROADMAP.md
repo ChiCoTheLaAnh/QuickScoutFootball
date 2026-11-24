@@ -89,6 +89,9 @@ Priority order: complete the **Final Big Five season 2024 production proof**; **
 
 ## P1
 
+- [x] Add a fixture-backed recruitment decision brief with supplied rankings and side-by-side candidate comparisons.
+- [ ] Validate a shareable Local benchmark artifact and reconcile its ranks before publishing retrospective player profiles.
+
 - [x] Create a decision-ready Excel dashboard from QuickScout seed data with a ranked candidate table, a score chart, and two scouting insights
 - [x] Keep the workbook snapshot aligned with the existing scoring engine and preserve API/schema contracts
 
