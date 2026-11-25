@@ -67,7 +67,7 @@ export default function Workspace({data}: {data: Dataset}){
   const measureLabels: Record<string,string> = {baseline_a:'G+A /90',baseline_b:'Distance ↓',v2:'V2 /100',advanced_similarity:'Similarity',v3:'V3 /100'};
   const measureLabel = measureLabels[method];
   return <main className="vthree" data-mobile-report={mobileReport}>
-    <header className="brief"><Link href="/dashboard/recruitment">← Recruitment brief</Link><strong>Right-wing recruitment</strong><span>€45m ceiling · {ids.length} candidates</span><small>Synthetic demo</small></header>
+    <header className="brief"><Link href="/dashboard/recruitment">← Real-world Salah study</Link><Link href="/dashboard/recruitment?demo=1">Synthetic brief</Link><strong>Right-wing recruitment</strong><span>€45m ceiling · {ids.length} candidates</span><small>Synthetic demo</small></header>
     <div className="layout"><aside><h2>Shortlist</h2><label>Rank by<select value={method} onChange={e=>setMethod(e.target.value)}>{Object.entries(labels).map(([k,v])=><option value={k} key={k}>{v}</option>)}</select></label>
     <input type="search" aria-label="Search shortlist" placeholder="Search candidate ID" value={query} onChange={e=>setQuery(e.target.value)}/>
     <div className="sort"><label>Sort by<select value={sort} onChange={e=>{setSort(e.target.value);setDescending(e.target.value==='measure'||e.target.value==='minutes')}}>{[['measure','Active ranking'],['age_years','Age'],['value_eur','Estimated value'],['minutes','Minutes']].map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label><button onClick={()=>setDescending(!descending)} aria-label="Reverse shortlist order">{(sort==='measure'&&method==='baseline_b'?!descending:descending)?'Descending ↓':'Ascending ↑'}</button></div>
