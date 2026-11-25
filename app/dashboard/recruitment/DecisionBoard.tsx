@@ -29,6 +29,7 @@ const money = (value: number | null) =>
         style: 'currency',
         currency: 'EUR',
         notation: 'compact',
+        minimumFractionDigits: 0,
         maximumFractionDigits: 2,
       }).format(value);
 const rank = (value: number | null) =>
@@ -295,7 +296,7 @@ export function DecisionBoard({ artifact }: { artifact: Artifact }) {
             ['Source', artifact.source],
             ['Release', artifact.release],
             ['Scoring version', artifact.scoringVersion],
-            ['Human evaluation', 'Not completed'],
+            ['Human evaluation', 'Postponed'],
             ['Production validation', 'Unverified'],
           ].map(([k, v]) => (
             <div key={k}>
@@ -304,16 +305,7 @@ export function DecisionBoard({ artifact }: { artifact: Artifact }) {
             </div>
           ))}
         </dl>
-        <details className="rc-evidence">
-          <summary>Reported local retrospective findings</summary>
-          <p>
-            The project owner reported 108 eligible candidates. Yankuba Minteh
-            led QuickScout V2. Mason Greenwood led both baselines. Repeated
-            local runs gave the same ranks. Cloud has not independently
-            reproduced these results. Historical coverage and valuation dates
-            limit interpretation.
-          </p>
-        </details>
+
       </section>
     </main>
   );

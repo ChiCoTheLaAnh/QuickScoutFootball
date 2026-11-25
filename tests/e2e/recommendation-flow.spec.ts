@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './browser-checks';
 
 const targetSearchQuery = process.env.E2E_SEARCH_QUERY?.trim() || 'salah';
 const targetName = process.env.E2E_TARGET_NAME?.trim() || 'Mohamed Salah';

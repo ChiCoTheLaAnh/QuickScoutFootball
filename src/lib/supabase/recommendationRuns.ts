@@ -37,7 +37,9 @@ type RecommendationRunRow = {
 };
 
 const MAX_MEMORY_RUNS = 50;
-const memoryRuns: RecommendationRunRecord[] = [];
+// Next.js can load the list and detail routes in separate module bundles.
+const processState = globalThis as typeof globalThis & { quickScoutMemoryRuns?: RecommendationRunRecord[] };
+const memoryRuns = processState.quickScoutMemoryRuns ??= [];
 
 function buildRunKey(request: RecommendationRequest): string {
   const hash = createHash('sha256')

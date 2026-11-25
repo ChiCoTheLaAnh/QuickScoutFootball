@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './browser-checks';
 
 test('compare two fictional candidates across all supplied methods on mobile', async ({
   page,
@@ -36,7 +36,7 @@ test('compare two fictional candidates across all supplied methods on mobile', a
   await expect(
     page.locator('article').getByText('Valuation and assists are unavailable.'),
   ).toBeVisible();
-  await expect(page.getByText('Not completed', { exact: true })).toBeVisible();
+  await expect(page.getByText('Postponed', { exact: true })).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -44,11 +44,10 @@ test('compare two fictional candidates across all supplied methods on mobile', a
   ).toBe(true);
 });
 
-test('desktop brief identifies the demo and attributes the local case note', async ({ page }) => {
+test('desktop brief identifies the demo', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/dashboard/recruitment?demo=1');
-  await expect(page.locator('nav')).toContainText('Synthetic demo');
+  await expect(page.getByRole('navigation').getByText('Synthetic demo', {exact:true})).toBeVisible();
   await expect(page.getByText(/All candidate profiles and ranks in this view are fictional/)).toBeVisible();
-  await page.getByText('Reported local retrospective findings', { exact: true }).click();
-  await expect(page.getByText(/Cloud has not independently reproduced/)).toBeVisible();
+  await expect(page.getByText("Postponed", { exact: true })).toBeVisible();
 });
