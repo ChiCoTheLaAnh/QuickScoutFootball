@@ -17,7 +17,8 @@ for (const width of [1400,390]) {
     };
 
     await expect(shortlist.first()).toContainText('SIM-198');
-    if(mobile) await page.screenshot({path:'.tmp/ux-review/390-shortlist.png'});
+    // Preserve the server-rendered input while Chromium captures the initial shortlist.
+    if(mobile) await page.screenshot({caret:'initial',path:'.tmp/ux-review/390-shortlist.png'});
     await search.fill('198');
     await expect(shortlist).toHaveCount(1);
     await shortlist.first().click();
