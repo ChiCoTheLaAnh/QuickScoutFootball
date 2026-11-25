@@ -47,7 +47,7 @@ def legacy_inputs(data):
 
 def agreement(a, b):
     common = pd.concat([a, b], axis=1).dropna()
-    return dict(**ranks(a, b), kendall_tau_b=kendalltau(common.iloc[:, 0], common.iloc[:, 1]).statistic)
+    return dict(**ranks(a, b, ascending=False), kendall_tau_b=kendalltau(common.iloc[:, 0], common.iloc[:, 1]).statistic)
 
 
 def frontier(objectives):

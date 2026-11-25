@@ -117,11 +117,11 @@ def compare(data, reference, candidates, target, axes=AXES, shares=None, mode="s
     return result.loc[candidates], parts.loc[candidates], k
 
 
-def ranks(a,b):
+def ranks(a,b, *, ascending=True):
     common = pd.concat([a.rename("a"),b.rename("b")],axis=1).dropna().sort_index()
     # Tie-average ranks for movement and association. Stable IDs break ties only at K.
     r = common.rank()
-    aa, bb = [list(common[k].sort_values(kind="stable").index) for k in common]
+    aa, bb = [list(common[k].sort_values(kind="stable", ascending=ascending).index) for k in common]
     out = dict(common_n=len(common),spearman=float(spearmanr(common.a,common.b).statistic)
                if len(common)>1 and min(common.nunique())>1 else np.nan,
                max_move=(r.a-r.b).abs().max(),median_move=(r.a-r.b).abs().median())

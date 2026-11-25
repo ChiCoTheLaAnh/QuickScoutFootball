@@ -11,6 +11,7 @@ for (const width of [1400, 390]) {
     const bars = page.locator('progress');
     await expect(bars).toHaveCount(24);
     for (const [i, percentile] of profile.pct.entries()) {
+      await expect(bars.nth(i)).toHaveAccessibleName(data.metrics[i].label + ' peer percentile');
       await expect(bars.nth(i)).toHaveAttribute('value', String(percentile));
     }
     const target = page.locator('polygon[stroke-dasharray]');

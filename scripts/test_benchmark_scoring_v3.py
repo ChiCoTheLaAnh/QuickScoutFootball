@@ -36,6 +36,11 @@ class ScoringTests(unittest.TestCase):
             np.testing.assert_allclose(rows.advanced_similarity, 100/(1+rows.distance))
             np.testing.assert_allclose(rows.baseline_a, rows.goals90 + rows.assists90)
             np.testing.assert_allclose(rows.performance, (rows.npxg90_pct + rows.xag90_pct)/2)
+            for pair in methods.itertuples():
+                for k in (5, 10, 20):
+                    first = rows.sort_index()[pair.first].nlargest(k).index
+                    second = rows.sort_index()[pair.second].nlargest(k).index
+                    self.assertEqual(getattr(pair, f"overlap_{k}"), len(first.intersection(second)))
             variants = pd.read_csv(root / "scenario-ranks.csv", index_col=0)
             np.testing.assert_allclose(variants["similarity only"], rows.advanced_similarity_rank)
             pareto = pd.read_csv(root / "pareto.csv", index_col=0)
