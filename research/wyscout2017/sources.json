@@ -1,0 +1,140 @@
+[
+  {
+    "item": "Events",
+    "authors": [
+      "Luca Pappalardo",
+      "Emanuele Massucco"
+    ],
+    "version": 1,
+    "url": "https://figshare.com/articles/dataset/Events/7770599/1",
+    "metadata": "https://api.figshare.com/v2/articles/7770599/versions/1",
+    "license": {
+      "value": 1,
+      "name": "CC BY 4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    "file": "events.zip",
+    "download": "https://ndownloader.figshare.com/files/14464685",
+    "bytes": 77323413,
+    "md5": "7c20e8647e7eda58d7838a0c7b1ec6ab",
+    "sha256": "877e015b716ffdeea18f04418e3f24fed307ed03c37ff305cabe1f47c4822a45"
+  },
+  {
+    "item": "Matches",
+    "authors": [
+      "Luca Pappalardo",
+      "Emanuele Massucco"
+    ],
+    "version": 1,
+    "url": "https://figshare.com/articles/dataset/Matches/7770422/1",
+    "metadata": "https://api.figshare.com/v2/articles/7770422/versions/1",
+    "license": {
+      "value": 1,
+      "name": "CC BY 4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    "file": "matches.zip",
+    "download": "https://ndownloader.figshare.com/files/14464622",
+    "bytes": 645097,
+    "md5": "51d80beb17480919f69a53a0152c2d71",
+    "sha256": "c8f92bb7533e5c127e043cee764c991b5c25b4f5e70a65be931baae0b1765ce9"
+  },
+  {
+    "item": "Players",
+    "authors": [
+      "Luca Pappalardo",
+      "Emanuele Massucco"
+    ],
+    "version": 3,
+    "url": "https://figshare.com/articles/dataset/Players/7765196/3",
+    "metadata": "https://api.figshare.com/v2/articles/7765196/versions/3",
+    "license": {
+      "value": 1,
+      "name": "CC BY 4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    "file": "players.json",
+    "download": "https://ndownloader.figshare.com/files/15073721",
+    "bytes": 1737347,
+    "md5": "f28ddf6326281efeda6488b2169f5609",
+    "sha256": "877a111cb1005b73df5645e9338bd74fb4b496bace2fbc545a72abb3b73efa2e"
+  },
+  {
+    "item": "Teams",
+    "authors": [
+      "Luca Pappalardo",
+      "Emanuele Massucco"
+    ],
+    "version": 3,
+    "url": "https://figshare.com/articles/dataset/Teams/7765310/3",
+    "metadata": "https://api.figshare.com/v2/articles/7765310/versions/3",
+    "license": {
+      "value": 1,
+      "name": "CC BY 4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    "file": "teams.json",
+    "download": "https://ndownloader.figshare.com/files/15073697",
+    "bytes": 27404,
+    "md5": "1381ff9449f21105090729cf0e086b5b",
+    "sha256": "9f7a4a3b3d92c0be33f40613ad6e6eb4316c3b9771ec74c61a22c9b8ece23a4d"
+  },
+  {
+    "item": "Competitions",
+    "authors": [
+      "Luca Pappalardo",
+      "Emanuele Massucco"
+    ],
+    "version": 4,
+    "url": "https://figshare.com/articles/dataset/Competitions/7765316/4",
+    "metadata": "https://api.figshare.com/v2/articles/7765316/versions/4",
+    "license": {
+      "value": 1,
+      "name": "CC BY 4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    "file": "competitions.json",
+    "download": "https://ndownloader.figshare.com/files/15073685",
+    "bytes": 1209,
+    "md5": "3dc210a4805dda5337b0ff9f7eaa407a",
+    "sha256": "39a738d2bc97638502e1ead01d661b54c623d6d6b37f77de3846f9a94db7a3a1"
+  },
+  {
+    "item": "Mapping of event identifiers to event names",
+    "authors": [
+      "Luca Pappalardo"
+    ],
+    "version": 1,
+    "url": "https://figshare.com/articles/dataset/Mapping_of_event_identifiers_to_event_names/11743836/1",
+    "metadata": "https://api.figshare.com/v2/articles/11743836/versions/1",
+    "license": {
+      "value": 1,
+      "name": "CC BY 4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    "file": "eventid2name.csv",
+    "download": "https://ndownloader.figshare.com/files/21385245",
+    "bytes": 1001,
+    "md5": "46daf16100ece0c743eedc9adcfea162",
+    "sha256": "ce7bafb341b36ab4c6093bf1c09c967e9cea10d4223724a1fc679086e5d16842"
+  },
+  {
+    "item": "Mapping of tag identifiers to tag names",
+    "authors": [
+      "Luca Pappalardo"
+    ],
+    "version": 1,
+    "url": "https://figshare.com/articles/dataset/Mapping_of_tag_identifiers_to_tag_names/11743818/1",
+    "metadata": "https://api.figshare.com/v2/articles/11743818/versions/1",
+    "license": {
+      "value": 1,
+      "name": "CC BY 4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    "file": "tags2name.csv",
+    "download": "https://ndownloader.figshare.com/files/21385239",
+    "bytes": 1754,
+    "md5": "e7acb14918d00e40c80a898b1da8fc39",
+    "sha256": "e0bc1bd8ff6ea5339586fdfc3e8e9b285a4a18f1ae2f5868ccc9ec9cecc8a922"
+  }
+]

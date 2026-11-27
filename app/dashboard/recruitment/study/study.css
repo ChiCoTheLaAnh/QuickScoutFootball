@@ -1,0 +1,9 @@
+.vthree .study-row {grid-template-columns:28px minmax(0,1fr) 66px}
+.study-row small {display:block;color:var(--muted);font-size:12px}
+.study-row .who {text-align:left}
+.vthree .study-credits {padding-top:18px;color:var(--muted);overflow-wrap:anywhere}
+.study-credits a,.vthree .brief a {text-decoration:underline;text-underline-offset:3px}
+.vthree .study-tabs {flex-wrap:wrap}
+.vthree .study-controls select {max-width:72%}
+.vthree details summary {cursor:pointer}
+.vthree .study-metric {text-align:left}
